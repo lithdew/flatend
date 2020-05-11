@@ -18,21 +18,21 @@ func ParseAccept(header http.Header, key string) (specs []AcceptSpec) {
 
 	for _, s := range header[key] {
 		for {
-			spec.Value, s = expectTokenSlash(s)
+			spec.Value, s = ExpectTokenSlash(s)
 			if spec.Value == "" {
 				break
 			}
 
-			s = skipSpace(s)
+			s = SkipSpace(s)
 
 			spec.Q = 1.0
 
 			if len(s) > 0 && s[0] == ';' {
-				s = skipSpace(s[1:])
+				s = SkipSpace(s[1:])
 				if !strings.HasPrefix(s, "q=") {
 					break
 				}
-				spec.Q, s = expectQuality(s[2:])
+				spec.Q, s = ExpectQuality(s[2:])
 				if spec.Q < 0.0 {
 					break
 				}
@@ -40,17 +40,17 @@ func ParseAccept(header http.Header, key string) (specs []AcceptSpec) {
 
 			specs = append(specs, spec)
 
-			s = skipSpace(s)
+			s = SkipSpace(s)
 			if len(s) == 0 || s[0] != ',' {
 				break
 			}
-			s = skipSpace(s[1:])
+			s = SkipSpace(s[1:])
 		}
 	}
 	return specs
 }
 
-func skipSpace(s string) (rest string) {
+func SkipSpace(s string) (rest string) {
 	i := 0
 	for ; i < len(s); i++ {
 		if octetTypes[s[i]]&isSpace == 0 {
@@ -60,7 +60,7 @@ func skipSpace(s string) (rest string) {
 	return s[i:]
 }
 
-func expectTokenSlash(s string) (token, rest string) {
+func ExpectTokenSlash(s string) (token, rest string) {
 	i := 0
 	for ; i < len(s); i++ {
 		b := s[i]
@@ -71,7 +71,7 @@ func expectTokenSlash(s string) (token, rest string) {
 	return s[:i], s[i:]
 }
 
-func expectQuality(s string) (q float64, rest string) {
+func ExpectQuality(s string) (q float64, rest string) {
 	switch {
 	case len(s) == 0:
 		return -1, ""

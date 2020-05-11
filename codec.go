@@ -18,22 +18,37 @@ type (
 type Codec struct {
 	Encode EncodeFunc
 	Decode DecodeFunc
+	Tags   []string
 }
 
-var Codecs = map[string]*Codec{
-	"json": reflectCodec(json.Marshal, json.Unmarshal),
-	"yaml": reflectCodec(yaml.Marshal, yaml.Unmarshal),
-	"xml":  reflectCodec(xml.Marshal, xml.Unmarshal),
-	"csv":  newCodec(csvEncoder, csvDecoder),
-	"gob":  newCodec(gobEncoder, gobDecoder),
+func (c Codec) Tag() string {
+	return c.Tags[0]
 }
 
-func reflectCodec(me func(src interface{}) ([]byte, error), md func(buf []byte, dst interface{}) error) *Codec {
-	return &Codec{Encode: marshalEncoder(me), Decode: unmarshalDecoder(md)}
+var Codecs = make(map[string]*Codec)
+var CodecTypes []string
+
+func init() {
+	registerCodec(reflectCodec(json.Marshal, json.Unmarshal, "application/json", "text/json"))
+	registerCodec(reflectCodec(yaml.Marshal, yaml.Unmarshal, "application/x-yaml", "text/x-yaml"))
+	registerCodec(reflectCodec(xml.Marshal, xml.Unmarshal, "application/xml", "text/xml"))
+	registerCodec(newCodec(csvEncoder, csvDecoder, "application/csv", "text/csv"))
+	registerCodec(newCodec(gobEncoder, gobDecoder, "application/x-gob", "text/x-gob"))
 }
 
-func newCodec(encoder EncodeFunc, decoder DecodeFunc) *Codec {
-	return &Codec{Encode: encoder, Decode: decoder}
+func registerCodec(codec *Codec) {
+	for _, tag := range codec.Tags {
+		Codecs[tag] = codec
+		CodecTypes = append(CodecTypes, tag)
+	}
+}
+
+func reflectCodec(me func(src interface{}) ([]byte, error), md func(buf []byte, dst interface{}) error, tags ...string) *Codec {
+	return &Codec{Encode: marshalEncoder(me), Decode: unmarshalDecoder(md), Tags: tags}
+}
+
+func newCodec(encoder EncodeFunc, decoder DecodeFunc, tags ...string) *Codec {
+	return &Codec{Encode: encoder, Decode: decoder, Tags: tags}
 }
 
 func unmarshalDecoder(f func(buf []byte, dst interface{}) error) DecodeFunc {

@@ -2,7 +2,6 @@ package flatend
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 	"net/http"
 	"sync"
@@ -13,6 +12,7 @@ var _ http.Handler = (*Server)(nil)
 
 type Config struct {
 	Codecs       map[string]*Codec
+	CodecTypes   []string
 	DefaultCodec string
 
 	Handlers []Handler
@@ -21,25 +21,26 @@ type Config struct {
 func NewDefaultConfig() *Config {
 	return &Config{
 		Codecs:       Codecs,
-		DefaultCodec: "json",
+		CodecTypes:   CodecTypes,
+		DefaultCodec: CodecTypes[0],
 
 		Handlers: []Handler{
 			&ContentType{},
 			&ContentLength{Max: 10 * 1024 * 1024},
 			&ContentDecode{},
+			&ContentEncode{},
 		},
 	}
 }
 
 type Server struct {
-	ReadTimeout       time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
+	IdleTimeout  time.Duration
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+
+	MaxHeaderBytes    int
 	ReadHeaderTimeout time.Duration
 
-	MaxHeaderBytes int
-
-	TLS    *tls.Config
 	Config *Config
 
 	once   sync.Once
@@ -51,14 +52,12 @@ func (s *Server) init() {
 	s.http = &http.Server{
 		Handler: s,
 
-		TLSConfig: s.TLS,
+		IdleTimeout:  s.IdleTimeout,
+		ReadTimeout:  s.ReadTimeout,
+		WriteTimeout: s.WriteTimeout,
 
-		ReadTimeout:       s.ReadTimeout,
-		WriteTimeout:      s.WriteTimeout,
-		IdleTimeout:       s.IdleTimeout,
+		MaxHeaderBytes:    s.MaxHeaderBytes,
 		ReadHeaderTimeout: s.ReadHeaderTimeout,
-
-		MaxHeaderBytes: s.MaxHeaderBytes,
 	}
 
 	if s.Config == nil {

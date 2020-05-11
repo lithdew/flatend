@@ -27,14 +27,14 @@ type Context struct {
 type ContentType struct{}
 
 func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
-	accept := NegotiateCodec(r, ctx.Config.Codecs, ctx.Config.DefaultCodec)
+	accept := NegotiateCodec(r, ctx.Config.CodecTypes, ctx.Config.DefaultCodec)
 
 	codec, available := ctx.Config.Codecs[accept]
 	if !available {
 		httpError(
 			w, codec,
 			http.StatusNotAcceptable,
-			fmt.Errorf("only able to accept %v", ctx.Config.Codecs),
+			fmt.Errorf("wanted codec %q, only able to accept %v", accept, ctx.Config.Codecs),
 		)
 		return
 	}
@@ -42,11 +42,11 @@ func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request
 	w.Header().Set(HeaderContentType, accept)
 }
 
-func NegotiateCodec(r *http.Request, codecs map[string]*Codec, defaultCodec string) string {
+func NegotiateCodec(r *http.Request, codecs []string, defaultCodec string) string {
 	specs := httputil.ParseAccept(r.Header, "Accept")
 	bestCodec, bestQ, bestWild := defaultCodec, -1.0, 3
 
-	for codec := range codecs {
+	for _, codec := range codecs {
 		for _, spec := range specs {
 			switch {
 			case spec.Q == 0.0:
@@ -83,14 +83,9 @@ type ContentLength struct {
 }
 
 func (c *ContentLength) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
-	var codec *Codec
-	if ctx.Config.Codecs != nil {
-		codec = ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
-	}
+	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 
 	switch {
-	case r.ContentLength == 0:
-		httpError(w, codec, http.StatusNoContent, nil)
 	case r.ContentLength < c.Min:
 		httpError(
 			w, codec,
@@ -109,10 +104,7 @@ func (c *ContentLength) Serve(ctx *Context, w http.ResponseWriter, r *http.Reque
 type ContentDecode struct{}
 
 func (h *ContentDecode) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
-	var codec *Codec
-	if ctx.Config.Codecs != nil {
-		codec = ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
-	}
+	codec := ctx.Config.Codecs[r.Header.Get(HeaderContentType)]
 
 	err := getHeaderParams(r, ctx.In)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
@@ -187,4 +179,27 @@ func getBodyParams(r *http.Request, codec *Codec, values map[string]interface{})
 	}
 
 	return nil
+}
+
+type ContentEncode struct{}
+
+func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) {
+	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
+
+	if codec == nil {
+		httpError(
+			w, codec,
+			http.StatusNotAcceptable,
+			fmt.Errorf("only able to accept %v", ctx.Config.Codecs),
+		)
+		return
+	}
+
+	buf, err := codec.Encode(ctx.Out)
+	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
+		httpError(w, codec, http.StatusInternalServerError, err)
+		return
+	}
+
+	w.Write(buf)
 }

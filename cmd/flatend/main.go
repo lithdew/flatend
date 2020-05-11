@@ -1,57 +1,173 @@
 package main
 
 import (
+	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/format"
+	"cuelang.org/go/cue/parser"
+	"encoding/json"
+	"flag"
 	"fmt"
-	"github.com/lithdew/flatend"
-	flag "github.com/spf13/pflag"
-	"github.com/valyala/fasthttp/reuseport"
-	"net"
-	"os"
-	"os/signal"
-	"strconv"
+	"github.com/chzyer/readline"
+	"io/ioutil"
+	"log"
+	"strings"
 )
-
-const program = `
-http_get("hello_world")
-`
 
 func check(err error) {
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 }
 
-var (
-	bindHost string
-	bindPort uint16
-)
+func hold(fn func() error) {
+	check(fn())
+}
+
+var runtime cue.Runtime
 
 func main() {
-	flag.StringVarP(&bindHost, "host", "h", "", "binding host")
-	flag.Uint16VarP(&bindPort, "port", "p", 0, "binding port")
-
 	flag.Parse()
 
-	addr := net.JoinHostPort(bindHost, strconv.FormatUint(uint64(bindPort), 10))
+	code := ""
 
-	fmt.Printf("Bind address: %q\n", addr)
+	filename := flag.Arg(0)
+	if filename != "" {
+		buf, err := ioutil.ReadFile(filename)
+		check(err)
 
-	ln, err := reuseport.Listen("tcp4", addr)
+		code = string(buf)
+	}
+
+	rl, err := readline.New("> ")
 	check(err)
+	defer hold(rl.Close)
 
-	_, err = flatend.LoadConfig(program)
-	check(err)
+	rl.Config.FuncFilterInputRune = func(r rune) (rune, bool) {
+		switch r {
+		case readline.CharCtrlZ:
+			return 0, false
+		default:
+			return r, true
+		}
+	}
 
-	srv := flatend.NewHTTP()
-	check(srv.Listen(ln))
+	for {
+		ln := rl.Line()
+		if ln.CanContinue() {
+			continue
+		}
+		if ln.CanBreak() {
+			break
+		}
 
-	defer func() {
-		check(srv.Close())
-	}()
+		if len(ln.Line) == 0 {
+			in, err := runtime.Compile("", code)
+			if err == nil {
+				err = in.Err
+			}
+			if err != nil {
+				fmt.Fprintln(rl, err)
+				continue
+			}
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-	<-ch
+			formatted, err := format.Node(in.Value().Syntax())
+			if err != nil {
+				fmt.Fprintln(rl, err)
+				continue
+			}
 
-	println()
+			fmt.Fprint(rl, string(formatted))
+
+			continue
+		}
+
+		if ln.Line[0] == ':' {
+			fields := strings.SplitN(ln.Line[1:], " ", 2)
+
+			switch fields[0] {
+			case "q", "quit":
+				return
+			case "o", "out":
+				in, err := runtime.Compile("", code)
+				if err == nil {
+					err = in.Err
+				}
+				if err != nil {
+					fmt.Fprintln(rl, err)
+					continue
+				}
+
+				formatted, err := json.MarshalIndent(in.Value(), "", "\t")
+				if err != nil {
+					fmt.Fprintln(rl, err)
+					continue
+				}
+
+				fmt.Fprintln(rl, string(formatted))
+			case "a", "append":
+				in, err := runtime.Compile("", code)
+				if err == nil {
+					err = in.Err
+				}
+				if err != nil {
+					fmt.Fprintln(rl, err)
+					continue
+				}
+
+				out, err := runtime.Compile("", fields[1])
+				if err == nil {
+					err = in.Err
+				}
+				if err != nil {
+					fmt.Fprintln(rl, err)
+					continue
+				}
+
+				val := in.Value().Unify(out.Value())
+				if err := val.Err(); err != nil {
+					fmt.Fprintln(rl, err)
+					continue
+				}
+
+				formatted, err := format.Node(val.Syntax())
+				if err != nil {
+					fmt.Fprintln(rl, err)
+					continue
+				}
+
+				code = string(formatted)
+			}
+
+			continue
+		}
+
+		expr, err := parser.ParseExpr("", ln.Line)
+		if err != nil {
+			fmt.Fprintln(rl, err)
+			continue
+		}
+
+		in, err := runtime.Compile("", code)
+		if err == nil {
+			err = in.Err
+		}
+		if err != nil {
+			fmt.Fprintln(rl, err)
+			continue
+		}
+
+		result := in.Eval(expr)
+		if err := result.Err(); err != nil {
+			fmt.Fprintln(rl, err)
+			continue
+		}
+
+		formatted, err := format.Node(result.Syntax())
+		if err != nil {
+			fmt.Fprintln(rl, err)
+			continue
+		}
+
+		fmt.Fprintln(rl, string(formatted))
+	}
 }

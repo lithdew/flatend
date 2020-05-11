@@ -6,12 +6,17 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 )
 
 func isEOF(err error) bool {
 	if errors.Is(err, io.EOF) {
+		return true
+	}
+
+	if errors.Is(err, http.ErrServerClosed) {
 		return true
 	}
 

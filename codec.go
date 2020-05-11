@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,6 +33,9 @@ func init() {
 	registerCodec(reflectCodec(yaml.Marshal, yaml.Unmarshal,
 		"application/x-yaml", "text/x-yaml", "application/yaml", "text/yaml",
 		"application/x-yml", "text/x-yml", "application/yml", "text/yml",
+	))
+	registerCodec(newCodec(tomlEncoder, tomlDecoder,
+		"application/x-toml", "text/x-toml", "application/toml", "text/x-toml",
 	))
 	registerCodec(newCodec(csvEncoder, csvDecoder, "application/csv", "text/csv"))
 	registerCodec(newCodec(gobEncoder, gobDecoder, "application/x-gob", "text/x-gob"))
@@ -112,4 +116,16 @@ func gobEncoder(values Values) ([]byte, error) {
 
 func gobDecoder(src []byte, values Values) error {
 	return gob.NewDecoder(bytes.NewReader(src)).Decode(&values)
+}
+
+func tomlEncoder(values Values) ([]byte, error) {
+	var b bytes.Buffer
+	if err := toml.NewEncoder(&b).Encode(values); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+func tomlDecoder(src []byte, values Values) error {
+	return toml.Unmarshal(src, values)
 }

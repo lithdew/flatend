@@ -2,6 +2,7 @@ package flatend
 
 import (
 	"context"
+	"github.com/julienschmidt/httprouter"
 	"net"
 	"net/http"
 	"sync"
@@ -9,29 +10,6 @@ import (
 )
 
 var _ http.Handler = (*Server)(nil)
-
-type Config struct {
-	Codecs       map[string]*Codec
-	CodecTypes   []string
-	DefaultCodec string
-
-	Handlers []Handler
-}
-
-func NewDefaultConfig() *Config {
-	return &Config{
-		Codecs:       Codecs,
-		CodecTypes:   CodecTypes,
-		DefaultCodec: "",
-
-		Handlers: []Handler{
-			&ContentType{},
-			&ContentLength{Max: 10 * 1024 * 1024},
-			&ContentDecode{},
-			&ContentEncode{},
-		},
-	}
-}
 
 type Server struct {
 	IdleTimeout  time.Duration
@@ -41,15 +19,22 @@ type Server struct {
 	MaxHeaderBytes    int
 	ReadHeaderTimeout time.Duration
 
-	Config *Config
+	once sync.Once
 
-	once   sync.Once
-	http   *http.Server
-	routes map[string]http.HandlerFunc
+	config *Config
+
+	srv    *http.Server
+	router *httprouter.Router
 }
 
 func (s *Server) init() {
-	s.http = &http.Server{
+	if s.config == nil {
+		s.config = NewDefaultConfig()
+	}
+
+	s.router = httprouter.New()
+
+	s.srv = &http.Server{
 		Handler: s,
 
 		IdleTimeout:  s.IdleTimeout,
@@ -59,15 +44,11 @@ func (s *Server) init() {
 		MaxHeaderBytes:    s.MaxHeaderBytes,
 		ReadHeaderTimeout: s.ReadHeaderTimeout,
 	}
-
-	if s.Config == nil {
-		s.Config = NewDefaultConfig()
-	}
 }
 
 func (s *Server) Serve(ln net.Listener) error {
 	s.once.Do(s.init)
-	return s.http.Serve(ln)
+	return s.srv.Serve(ln)
 }
 
 func (s *Server) ServeTLS(addr, certFile, keyFile string) error {
@@ -78,7 +59,7 @@ func (s *Server) ServeTLS(addr, certFile, keyFile string) error {
 		return err
 	}
 
-	return s.http.ServeTLS(ln, certFile, keyFile)
+	return s.srv.ServeTLS(ln, certFile, keyFile)
 }
 
 func (s *Server) Shutdown() error {
@@ -87,10 +68,12 @@ func (s *Server) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	return s.http.Shutdown(ctx)
+	return s.srv.Shutdown(ctx)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	//s.router.ServeHTTP(w, r)
+
 	in := acquireValues()
 	out := acquireValues()
 
@@ -98,12 +81,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer releaseValues(out)
 
 	ctx := &Context{
-		Config: s.Config,
+		Config: s.config,
 		In:     in,
 		Out:    out,
 	}
 
-	for _, handler := range s.Config.Handlers {
+	for _, handler := range s.config.Handlers {
 		err := handler.Serve(ctx, w, r)
 		if err != nil {
 			return

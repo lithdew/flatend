@@ -14,98 +14,32 @@ const (
 	HeaderContentTypeOptions = "X-Content-Type-Options"
 )
 
-var (
-	_ http.Handler = (*ContextHandler)(nil)
-	_ http.Handler = (*ContentTypeHandler)(nil)
-	_ http.Handler = (*ContentLengthHandler)(nil)
-	_ http.Handler = (*ContentDecodeHandler)(nil)
-
-	_ ContextLoader = (*ContextHandler)(nil)
-	_ ContextLoader = (*ContentTypeHandler)(nil)
-	_ ContextLoader = (*ContentLengthHandler)(nil)
-	_ ContextLoader = (*ContentDecodeHandler)(nil)
-)
-
-type ContextLoader interface {
-	LoadContext(ctx *Context)
+type Handler interface {
+	Serve(ctx *Context, w http.ResponseWriter, r *http.Request)
 }
 
 type Context struct {
-	Codecs           map[string]*Codec
-	DefaultCodec     string
-	MinContentLength int64
-	MaxContentLength int64
-
-	In  Values
-	Out Values
+	Config *Config
+	In     Values
+	Out    Values
 }
 
-type ContextHandler struct {
-	Codecs           map[string]*Codec
-	DefaultCodec     string
-	MinContentLength int64
-	MaxContentLength int64
+type ContentType struct{}
 
-	Handlers []interface {
-		http.Handler
-		ContextLoader
-	}
-}
+func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
+	accept := NegotiateCodec(r, ctx.Config.Codecs, ctx.Config.DefaultCodec)
 
-func (h *ContextHandler) LoadContext(other *Context) {
-	h.Codecs = other.Codecs
-	h.DefaultCodec = other.DefaultCodec
-	h.MinContentLength = other.MinContentLength
-	h.MaxContentLength = other.MaxContentLength
-}
-
-func (h *ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	in := acquireValues()
-	out := acquireValues()
-
-	defer releaseValues(in)
-	defer releaseValues(out)
-
-	ctx := &Context{
-		Codecs:           h.Codecs,
-		DefaultCodec:     h.DefaultCodec,
-		MinContentLength: h.MinContentLength,
-		MaxContentLength: h.MaxContentLength,
-
-		In:  in,
-		Out: out,
-	}
-
-	for _, handler := range h.Handlers {
-		handler.LoadContext(ctx)
-		handler.ServeHTTP(w, r)
-	}
-}
-
-type ContentTypeHandler struct {
-	Codecs       map[string]*Codec
-	DefaultCodec string
-}
-
-func (h *ContentTypeHandler) LoadContext(ctx *Context) {
-	h.Codecs = ctx.Codecs
-	h.DefaultCodec = ctx.DefaultCodec
-}
-
-func (h *ContentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	accepts := NegotiateCodec(r, h.Codecs, h.DefaultCodec)
-
-	codec, available := h.Codecs[accepts]
+	codec, available := ctx.Config.Codecs[accept]
 	if !available {
 		httpError(
 			w, codec,
 			http.StatusNotAcceptable,
-			fmt.Errorf("only able to accept %v", h.Codecs),
+			fmt.Errorf("only able to accept %v", ctx.Config.Codecs),
 		)
 		return
 	}
 
-	w.Header().Set(HeaderContentType, accepts)
+	w.Header().Set(HeaderContentType, accept)
 }
 
 func NegotiateCodec(r *http.Request, codecs map[string]*Codec, defaultCodec string) string {
@@ -143,105 +77,90 @@ func NegotiateCodec(r *http.Request, codecs map[string]*Codec, defaultCodec stri
 	return bestCodec
 }
 
-type ContentLengthHandler struct {
-	Codecs map[string]*Codec
-	Min    int64
-	Max    int64
+type ContentLength struct {
+	Min int64
+	Max int64
 }
 
-func (h *ContentLengthHandler) LoadContext(ctx *Context) {
-	h.Codecs = ctx.Codecs
-	h.Min = ctx.MinContentLength
-	h.Max = ctx.MaxContentLength
-}
-
-func (h *ContentLengthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (c *ContentLength) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
 	var codec *Codec
-	if h.Codecs != nil {
-		codec = h.Codecs[w.Header().Get(HeaderContentType)]
+	if ctx.Config.Codecs != nil {
+		codec = ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 	}
 
 	switch {
 	case r.ContentLength == 0:
 		httpError(w, codec, http.StatusNoContent, nil)
-	case r.ContentLength < h.Max:
+	case r.ContentLength < c.Min:
 		httpError(
 			w, codec,
 			http.StatusBadRequest,
-			fmt.Errorf("payload too small: expected %d byte(s) min, got %d byte(s)", h.Min, r.ContentLength),
+			fmt.Errorf("payload too small: expected %d byte(s) min, got %d byte(s)", c.Min, r.ContentLength),
 		)
-	case r.ContentLength > h.Max:
+	case r.ContentLength > c.Max:
 		httpError(
 			w, codec,
 			http.StatusRequestEntityTooLarge,
-			fmt.Errorf("payload too large: expected %d byte(s) max, got %d byte(s)", h.Max, r.ContentLength),
+			fmt.Errorf("payload too large: expected %d byte(s) max, got %d byte(s)", c.Max, r.ContentLength),
 		)
 	}
 }
 
-type ContentDecodeHandler struct {
-	Codecs map[string]*Codec
-	Values Values
-}
+type ContentDecode struct{}
 
-func (h *ContentDecodeHandler) LoadContext(ctx *Context) {
-	h.Codecs = ctx.Codecs
-	h.Values = ctx.In
-}
-
-func (h *ContentDecodeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *ContentDecode) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
 	var codec *Codec
-	if h.Codecs != nil {
-		codec = h.Codecs[w.Header().Get(HeaderContentType)]
+	if ctx.Config.Codecs != nil {
+		codec = ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 	}
 
-	err := h.getHeaderParams(r)
-	if !errors.Is(err, http.ErrBodyNotAllowed) {
+	err := getHeaderParams(r, ctx.In)
+	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
 		httpError(w, codec, http.StatusBadRequest, err)
 		return
 	}
 
-	err = h.getQueryParams(r)
-	if !errors.Is(err, http.ErrBodyNotAllowed) {
+	err = getQueryParams(r, ctx.In)
+	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
 		httpError(w, codec, http.StatusBadRequest, err)
 		return
 	}
 
-	err = h.getBodyParams(r, codec)
-	if !errors.Is(err, http.ErrBodyNotAllowed) {
+	err = getBodyParams(r, codec, ctx.In)
+	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
 		httpError(w, codec, http.StatusBadRequest, err)
 		return
 	}
 }
 
-func (h *ContentDecodeHandler) getHeaderParams(r *http.Request) error {
+func getHeaderParams(r *http.Request, values map[string]interface{}) error {
 	for k, v := range r.Header {
 		switch len(v) {
 		case 0:
 		case 1:
-			h.Values[k] = v[0]
+			values[k] = v[0]
 		default:
-			h.Values[k] = v
+			values[k] = v
 		}
 	}
 	return nil
 }
 
-func (h *ContentDecodeHandler) getQueryParams(r *http.Request) error {
+func getQueryParams(r *http.Request, values map[string]interface{}) error {
 	for k, v := range r.URL.Query() {
 		switch len(v) {
 		case 0:
 		case 1:
-			h.Values[k] = v[0]
+			values[k] = v[0]
 		default:
-			h.Values[k] = v
+			values[k] = v
 		}
 	}
 	return nil
 }
 
-func (h *ContentDecodeHandler) getBodyParams(r *http.Request, codec *Codec) error {
-	if r.Method == http.MethodTrace {
+func getBodyParams(r *http.Request, codec *Codec, values map[string]interface{}) error {
+	if r.ContentLength == 0 || r.Method == http.MethodTrace {
 		return fmt.Errorf("no body is expected: %w", http.ErrBodyNotAllowed)
 	}
 
@@ -262,7 +181,7 @@ func (h *ContentDecodeHandler) getBodyParams(r *http.Request, codec *Codec) erro
 		return errors.New("unable to negotiate a codec to decode the body of this request")
 	}
 
-	err = codec.Decode(buf, h.Values)
+	err = codec.Decode(buf, values)
 	if err != nil {
 		return fmt.Errorf("failed to decode body: %w", err)
 	}

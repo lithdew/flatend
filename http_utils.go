@@ -23,6 +23,7 @@ func httpError(w http.ResponseWriter, codec *Codec, status int, err error) {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.WriteHeader(status)
 			w.Write(buf)
+
 			return
 		}
 	}

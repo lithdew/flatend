@@ -6,7 +6,6 @@ import (
 	"github.com/lithdew/flatend/httputil"
 	"io"
 	"net/http"
-	"strings"
 )
 
 const (
@@ -27,7 +26,7 @@ type Context struct {
 type ContentType struct{}
 
 func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
-	accept := NegotiateCodec(r, ctx.Config.CodecTypes, ctx.Config.DefaultCodec)
+	accept := httputil.NegotiateContentType(r, ctx.Config.CodecTypes, ctx.Config.DefaultCodec)
 
 	codec, available := ctx.Config.Codecs[accept]
 	if !available {
@@ -41,41 +40,6 @@ func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request
 	w.Header().Set(HeaderContentType, accept)
 
 	return nil
-}
-
-func NegotiateCodec(r *http.Request, codecs []string, defaultCodec string) string {
-	specs := httputil.ParseAccept(r.Header, "Accept")
-	bestCodec, bestQ, bestWild := defaultCodec, -1.0, 3
-
-	for _, codec := range codecs {
-		for _, spec := range specs {
-			switch {
-			case spec.Q == 0.0:
-				// ignore
-			case spec.Q < bestQ:
-				// better match found
-			case spec.Value == "*/*":
-				if spec.Q > bestQ || bestWild > 2 {
-					bestQ = spec.Q
-					bestWild = 2
-					bestCodec = codec
-				}
-			case strings.HasSuffix(spec.Value, "/*"):
-				if strings.HasPrefix(codec, spec.Value[:len(spec.Value)-1]) && (spec.Q > bestQ || bestWild > 1) {
-					bestQ = spec.Q
-					bestWild = 1
-					bestCodec = codec
-				}
-			default:
-				if spec.Value == codec && (spec.Q > bestQ || bestWild > 0) {
-					bestQ = spec.Q
-					bestWild = 0
-					bestCodec = codec
-				}
-			}
-		}
-	}
-	return bestCodec
 }
 
 type ContentLength struct {

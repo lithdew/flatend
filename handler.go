@@ -15,7 +15,7 @@ const (
 )
 
 type Handler interface {
-	Serve(ctx *Context, w http.ResponseWriter, r *http.Request)
+	Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error
 }
 
 type Context struct {
@@ -26,20 +26,21 @@ type Context struct {
 
 type ContentType struct{}
 
-func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
+func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
 	accept := NegotiateCodec(r, ctx.Config.CodecTypes, ctx.Config.DefaultCodec)
 
 	codec, available := ctx.Config.Codecs[accept]
 	if !available {
-		httpError(
+		return httpError(
 			w, codec,
 			http.StatusNotAcceptable,
 			fmt.Errorf("only able to accept %q", ctx.Config.CodecTypes),
 		)
-		return
 	}
 
 	w.Header().Set(HeaderContentType, accept)
+
+	return nil
 }
 
 func NegotiateCodec(r *http.Request, codecs []string, defaultCodec string) string {
@@ -82,47 +83,48 @@ type ContentLength struct {
 	Max int64
 }
 
-func (c *ContentLength) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
+func (c *ContentLength) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
 	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 
 	switch {
 	case r.ContentLength < c.Min:
-		httpError(
+		return httpError(
 			w, codec,
 			http.StatusBadRequest,
 			fmt.Errorf("payload too small: expected %d byte(s) min, got %d byte(s)", c.Min, r.ContentLength),
 		)
 	case r.ContentLength > c.Max:
-		httpError(
+		return httpError(
 			w, codec,
 			http.StatusRequestEntityTooLarge,
 			fmt.Errorf("payload too large: expected %d byte(s) max, got %d byte(s)", c.Max, r.ContentLength),
 		)
 	}
+
+	return nil
 }
 
 type ContentDecode struct{}
 
-func (h *ContentDecode) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) {
+func (h *ContentDecode) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
 	codec := ctx.Config.Codecs[r.Header.Get(HeaderContentType)]
 
 	err := getHeaderParams(r, ctx.In)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
-		httpError(w, codec, http.StatusBadRequest, err)
-		return
+		return httpError(w, codec, http.StatusBadRequest, err)
 	}
 
 	err = getQueryParams(r, ctx.In)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
-		httpError(w, codec, http.StatusBadRequest, err)
-		return
+		return httpError(w, codec, http.StatusBadRequest, err)
 	}
 
 	err = getBodyParams(r, codec, ctx.In)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
-		httpError(w, codec, http.StatusBadRequest, err)
-		return
+		return httpError(w, codec, http.StatusBadRequest, err)
 	}
+
+	return nil
 }
 
 func getHeaderParams(r *http.Request, values map[string]interface{}) error {
@@ -183,25 +185,25 @@ func getBodyParams(r *http.Request, codec *Codec, values map[string]interface{})
 
 type ContentEncode struct{}
 
-func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) {
+func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) error {
 	ctx.Out = ctx.In
 
 	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 
 	if codec == nil {
-		httpError(
+		return httpError(
 			w, codec,
 			http.StatusNotAcceptable,
 			fmt.Errorf("only able to accept %q", ctx.Config.CodecTypes),
 		)
-		return
 	}
 
 	buf, err := codec.Encode(ctx.Out)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
-		httpError(w, codec, http.StatusInternalServerError, err)
-		return
+		return httpError(w, codec, http.StatusInternalServerError, err)
 	}
 
 	w.Write(buf)
+
+	return nil
 }

@@ -22,7 +22,7 @@ func NewDefaultConfig() *Config {
 	return &Config{
 		Codecs:       Codecs,
 		CodecTypes:   CodecTypes,
-		DefaultCodec: CodecTypes[0],
+		DefaultCodec: "",
 
 		Handlers: []Handler{
 			&ContentType{},
@@ -104,6 +104,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, handler := range s.Config.Handlers {
-		handler.Serve(ctx, w, r)
+		err := handler.Serve(ctx, w, r)
+		if err != nil {
+			return
+		}
 	}
 }

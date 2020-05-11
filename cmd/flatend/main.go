@@ -39,7 +39,7 @@ func wrap(fn func() error) {
 }
 
 func main() {
-	ln, err := net.Listen("tcp", ":0")
+	ln, err := net.Listen("tcp", ":44444")
 	check(err)
 	defer wrap(ln.Close)
 

@@ -20,6 +20,7 @@ var (
 	_ http.Handler = (*ContentLengthHandler)(nil)
 	_ http.Handler = (*ContentDecodeHandler)(nil)
 
+	_ ContextLoader = (*ContextHandler)(nil)
 	_ ContextLoader = (*ContentTypeHandler)(nil)
 	_ ContextLoader = (*ContentLengthHandler)(nil)
 	_ ContextLoader = (*ContentDecodeHandler)(nil)
@@ -49,6 +50,13 @@ type ContextHandler struct {
 		http.Handler
 		ContextLoader
 	}
+}
+
+func (h *ContextHandler) LoadContext(other *Context) {
+	h.Codecs = other.Codecs
+	h.DefaultCodec = other.DefaultCodec
+	h.MinContentLength = other.MinContentLength
+	h.MaxContentLength = other.MaxContentLength
 }
 
 func (h *ContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

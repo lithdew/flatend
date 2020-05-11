@@ -6,9 +6,10 @@
 
 ## Features
 
-1. Supports decoding/encoding requests and responses to/from JSON, YAML, TOML, CSV, or Gob.
-2. Supports live-editing, staging, and deployment of APIs.
-3. Supports load-balancing and TLS out-of-the-box.
+1. First-class support for content type negotiation.
+2. Supports decoding/encoding requests and responses from/to JSON/YAML/TOML/CSV/Gob.
+3. Supports live-editing, staging, and deployment of APIs.
+4. Supports load-balancing and TLS out-of-the-box.
 
 ## Request Lifecycle
 

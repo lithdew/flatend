@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"encoding/gob"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"gopkg.in/yaml.v3"
 )
@@ -30,8 +29,10 @@ var CodecTypes []string
 
 func init() {
 	registerCodec(reflectCodec(json.Marshal, json.Unmarshal, "application/json", "text/json"))
-	registerCodec(reflectCodec(yaml.Marshal, yaml.Unmarshal, "application/x-yaml", "text/x-yaml"))
-	registerCodec(reflectCodec(xml.Marshal, xml.Unmarshal, "application/xml", "text/xml"))
+	registerCodec(reflectCodec(yaml.Marshal, yaml.Unmarshal,
+		"application/x-yaml", "text/x-yaml", "application/yaml", "text/yaml",
+		"application/x-yml", "text/x-yml", "application/yml", "text/yml",
+	))
 	registerCodec(newCodec(csvEncoder, csvDecoder, "application/csv", "text/csv"))
 	registerCodec(newCodec(gobEncoder, gobDecoder, "application/x-gob", "text/x-gob"))
 }
@@ -65,11 +66,10 @@ func marshalEncoder(f func(src interface{}) ([]byte, error)) EncodeFunc {
 
 func csvEncoder(values Values) ([]byte, error) {
 	records := [][]string{make([]string, 0, len(values)), make([]string, 0, len(values))}
-	keys, vals := records[0], records[1]
 
 	for k, v := range values {
-		keys = append(keys, k)
-		vals = append(vals, fmt.Sprint(v))
+		records[0] = append(records[0], k)
+		records[1] = append(records[1], fmt.Sprint(v))
 	}
 
 	var b bytes.Buffer

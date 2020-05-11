@@ -1,6 +1,8 @@
 package flatend
 
-import "sync"
+import (
+	"sync"
+)
 
 type Values map[string]interface{}
 

@@ -34,7 +34,7 @@ func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request
 		httpError(
 			w, codec,
 			http.StatusNotAcceptable,
-			fmt.Errorf("wanted codec %q, only able to accept %v", accept, ctx.Config.Codecs),
+			fmt.Errorf("only able to accept %q", ctx.Config.CodecTypes),
 		)
 		return
 	}
@@ -184,13 +184,15 @@ func getBodyParams(r *http.Request, codec *Codec, values map[string]interface{})
 type ContentEncode struct{}
 
 func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) {
+	ctx.Out = ctx.In
+
 	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 
 	if codec == nil {
 		httpError(
 			w, codec,
 			http.StatusNotAcceptable,
-			fmt.Errorf("only able to accept %v", ctx.Config.Codecs),
+			fmt.Errorf("only able to accept %q", ctx.Config.CodecTypes),
 		)
 		return
 	}

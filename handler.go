@@ -19,7 +19,7 @@ var (
 	_ Handler = (*ContentLength)(nil)
 	_ Handler = (*ContentDecode)(nil)
 	_ Handler = (*ContentEncode)(nil)
-	_ Handler = (*ExecuteSQL)(nil)
+	_ Handler = (*QuerySQL)(nil)
 )
 
 type Context struct {
@@ -54,7 +54,7 @@ type ContentLength struct {
 	Max int64
 }
 
-func (c *ContentLength) Serve(_ *Context, w http.ResponseWriter, r *http.Request) error {
+func (c *ContentLength) Serve(_ *Context, _ http.ResponseWriter, r *http.Request) error {
 	switch {
 	case r.ContentLength < c.Min:
 		return &Error{
@@ -73,7 +73,7 @@ func (c *ContentLength) Serve(_ *Context, w http.ResponseWriter, r *http.Request
 
 type ContentDecode struct{}
 
-func (h *ContentDecode) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
+func (h *ContentDecode) Serve(ctx *Context, _ http.ResponseWriter, r *http.Request) error {
 	codec := ctx.Config.Codecs[r.Header.Get(HeaderContentType)]
 
 	err := getHeaderParams(r, ctx.In)
@@ -177,15 +177,54 @@ func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Reque
 	return nil
 }
 
-type ExecuteSQL struct {
-	Stmt *sql.Stmt
+type QuerySQL struct {
+	MaxNumRows int
+	Stmt       *sql.Stmt
+	Params     []string
 }
 
-func (h *ExecuteSQL) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
-	rows, err := h.Stmt.Query()
+func (h *QuerySQL) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
+	params := acquireValueBuffer(len(h.Params))
+	defer releaseValueBuffer(params)
+
+	for _, param := range h.Params {
+		params = append(params, ctx.In[param])
+	}
+
+	rows, err := h.Stmt.Query(params...)
 	if err != nil {
 		return &Error{Status: http.StatusInternalServerError, Err: fmt.Errorf("failed to execute query: %w", err)}
 	}
-	_ = rows
+
+	keys, err := rows.Columns()
+	if err != nil {
+		return &Error{Status: http.StatusInternalServerError, Err: fmt.Errorf("failed to fetch columns: %w", err)}
+	}
+
+	if len(keys) == 0 {
+		return &Error{Status: http.StatusInternalServerError, Err: errors.New("zero columns resultant from sql query")}
+	}
+
+	vals := acquireValueBuffer(len(keys))
+	defer releaseValueBuffer(vals)
+
+	var results []map[string]interface{}
+
+	for i := 0; rows.Next() && i < h.MaxNumRows; i++ {
+		err := rows.Scan(vals...)
+		if err != nil {
+			return &Error{Status: http.StatusInternalServerError, Err: fmt.Errorf("got an error while scanning: %w", err)}
+		}
+
+		result := make(map[string]interface{}, len(keys))
+		for i := range keys {
+			result[keys[i]] = vals[i]
+		}
+
+		results = append(results, result)
+	}
+
+	ctx.Out["results"] = results
+
 	return nil
 }

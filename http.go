@@ -109,28 +109,27 @@ func (s *Server) writeError(w http.ResponseWriter, err *Error) {
 	values["error"] = err.Error()
 
 	var (
-		encoded    []byte
-		encodedErr error
+		buf      []byte
+		codecErr error
 	)
 
 	codec := s.config.Codecs[w.Header().Get(HeaderContentType)]
-
 	if codec != nil {
-		encoded, encodedErr = codec.Encode(values)
+		buf, codecErr = codec.Encode(values)
 	}
 
-	if codec == nil || encodedErr != nil {
+	if codec == nil || codecErr != nil {
 		w.Header().Set(HeaderContentType, "text/plain; charset=utf-8")
 		w.Header().Set(HeaderContentTypeOptions, "nosniff")
 		w.WriteHeader(err.Status)
 
-		encoded = bytesutil.Slice(err.Error())
-		w.Write(encoded)
+		buf = bytesutil.Slice(err.Error())
+		w.Write(buf)
 
 		return
 	}
 
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(err.Status)
-	w.Write(encoded)
+	w.Write(buf)
 }

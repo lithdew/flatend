@@ -178,23 +178,44 @@ func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Reque
 }
 
 type QuerySQL struct {
+	MinNumRows int
 	MaxNumRows int
-	Stmt       *sql.Stmt
-	Params     []string
+
+	Stmt   *sql.Stmt
+	Params []string
 }
 
-func (h *QuerySQL) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
-	params := acquireValueBuffer(len(h.Params))
-	defer releaseValueBuffer(params)
+func (h *QuerySQL) handlePagination(ctx *Context) {
+	offset, provided := ctx.In["offset"].(int)
+	if !provided || offset < 0 {
+		ctx.In["offset"] = 0
+	}
 
+	limit, provided := ctx.In["limit"].(int)
+
+	switch {
+	case !provided || limit < h.MinNumRows || limit < 0:
+		ctx.In["limit"] = h.MinNumRows
+	case limit > h.MaxNumRows:
+		ctx.In["limit"] = h.MaxNumRows
+	}
+}
+
+func (h *QuerySQL) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) error {
+	h.handlePagination(ctx)
+
+	params := acquireValueBuffer(len(h.Params))
 	for _, param := range h.Params {
 		params = append(params, ctx.In[param])
 	}
-
 	rows, err := h.Stmt.Query(params...)
+	releaseValueBuffer(params)
+
 	if err != nil {
 		return &Error{Status: http.StatusInternalServerError, Err: fmt.Errorf("failed to execute query: %w", err)}
 	}
+
+	defer rows.Close()
 
 	keys, err := rows.Columns()
 	if err != nil {

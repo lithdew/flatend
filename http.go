@@ -3,6 +3,7 @@ package flatend
 import (
 	"context"
 	"github.com/julienschmidt/httprouter"
+	"github.com/lithdew/bytesutil"
 	"net"
 	"net/http"
 	"sync"
@@ -89,7 +90,47 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, handler := range s.config.Handlers {
 		err := handler.Serve(ctx, w, r)
 		if err != nil {
-			return
+			s.writeError(w, err.(*Error))
+			break
 		}
 	}
+}
+
+func (s *Server) writeError(w http.ResponseWriter, err *Error) {
+	if err.Status == http.StatusNoContent {
+		w.WriteHeader(err.Status)
+		return
+	}
+
+	values := acquireValues()
+	defer releaseValues(values)
+
+	values["status"] = err.Status
+	values["error"] = err.Error()
+
+	var (
+		encoded    []byte
+		encodedErr error
+	)
+
+	codec := s.config.Codecs[w.Header().Get(HeaderContentType)]
+
+	if codec != nil {
+		encoded, encodedErr = codec.Encode(values)
+	}
+
+	if codec == nil || encodedErr != nil {
+		w.Header().Set(HeaderContentType, "text/plain; charset=utf-8")
+		w.Header().Set(HeaderContentTypeOptions, "nosniff")
+		w.WriteHeader(err.Status)
+
+		encoded = bytesutil.Slice(err.Error())
+		w.Write(encoded)
+
+		return
+	}
+
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(err.Status)
+	w.Write(encoded)
 }

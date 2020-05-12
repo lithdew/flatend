@@ -1,6 +1,7 @@
 package flatend
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/lithdew/flatend/httputil"
@@ -13,9 +14,13 @@ const (
 	HeaderContentTypeOptions = "X-Content-Type-Options"
 )
 
-type Handler interface {
-	Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error
-}
+var (
+	_ Handler = (*ContentType)(nil)
+	_ Handler = (*ContentLength)(nil)
+	_ Handler = (*ContentDecode)(nil)
+	_ Handler = (*ContentEncode)(nil)
+	_ Handler = (*ExecuteSQL)(nil)
+)
 
 type Context struct {
 	Config *Config
@@ -23,18 +28,20 @@ type Context struct {
 	Out    Values
 }
 
+type Handler interface {
+	Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error
+}
+
 type ContentType struct{}
 
 func (h *ContentType) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
 	accept := httputil.NegotiateContentType(r, ctx.Config.CodecTypes, ctx.Config.DefaultCodec)
 
-	codec, available := ctx.Config.Codecs[accept]
-	if !available {
-		return httpError(
-			w, codec,
-			http.StatusNotAcceptable,
-			fmt.Errorf("only able to accept %q", ctx.Config.CodecTypes),
-		)
+	if _, available := ctx.Config.Codecs[accept]; !available {
+		return &Error{
+			Status: http.StatusNotAcceptable,
+			Err:    fmt.Errorf("only able to accept %q", ctx.Config.CodecTypes),
+		}
 	}
 
 	w.Header().Set(HeaderContentType, accept)
@@ -47,22 +54,18 @@ type ContentLength struct {
 	Max int64
 }
 
-func (c *ContentLength) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
-	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
-
+func (c *ContentLength) Serve(_ *Context, w http.ResponseWriter, r *http.Request) error {
 	switch {
 	case r.ContentLength < c.Min:
-		return httpError(
-			w, codec,
-			http.StatusBadRequest,
-			fmt.Errorf("payload too small: expected %d byte(s) min, got %d byte(s)", c.Min, r.ContentLength),
-		)
+		return &Error{
+			Status: http.StatusBadRequest,
+			Err:    fmt.Errorf("payload too small: expected %d byte(s) min, got %d byte(s)", c.Min, r.ContentLength),
+		}
 	case r.ContentLength > c.Max:
-		return httpError(
-			w, codec,
-			http.StatusRequestEntityTooLarge,
-			fmt.Errorf("payload too large: expected %d byte(s) max, got %d byte(s)", c.Max, r.ContentLength),
-		)
+		return &Error{
+			Status: http.StatusRequestEntityTooLarge,
+			Err:    fmt.Errorf("payload too large: expected %d byte(s) max, got %d byte(s)", c.Max, r.ContentLength),
+		}
 	}
 
 	return nil
@@ -75,17 +78,17 @@ func (h *ContentDecode) Serve(ctx *Context, w http.ResponseWriter, r *http.Reque
 
 	err := getHeaderParams(r, ctx.In)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
-		return httpError(w, codec, http.StatusBadRequest, err)
+		return &Error{Status: http.StatusBadRequest, Err: err}
 	}
 
 	err = getQueryParams(r, ctx.In)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
-		return httpError(w, codec, http.StatusBadRequest, err)
+		return &Error{Status: http.StatusBadRequest, Err: err}
 	}
 
 	err = getBodyParams(r, codec, ctx.In)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
-		return httpError(w, codec, http.StatusBadRequest, err)
+		return &Error{Status: http.StatusBadRequest, Err: err}
 	}
 
 	return nil
@@ -155,19 +158,34 @@ func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Reque
 	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 
 	if codec == nil {
-		return httpError(
-			w, codec,
-			http.StatusNotAcceptable,
-			fmt.Errorf("only able to accept %q", ctx.Config.CodecTypes),
-		)
+		return &Error{
+			Status: http.StatusNotAcceptable,
+			Err:    fmt.Errorf("only able to accept %q", ctx.Config.CodecTypes),
+		}
 	}
 
 	buf, err := codec.Encode(ctx.Out)
 	if err != nil && !errors.Is(err, http.ErrBodyNotAllowed) {
-		return httpError(w, codec, http.StatusInternalServerError, err)
+		return &Error{
+			Status: http.StatusInternalServerError,
+			Err:    err,
+		}
 	}
 
 	w.Write(buf)
 
+	return nil
+}
+
+type ExecuteSQL struct {
+	Stmt *sql.Stmt
+}
+
+func (h *ExecuteSQL) Serve(ctx *Context, w http.ResponseWriter, r *http.Request) error {
+	rows, err := h.Stmt.Query()
+	if err != nil {
+		return &Error{Status: http.StatusInternalServerError, Err: fmt.Errorf("failed to execute query: %w", err)}
+	}
+	_ = rows
 	return nil
 }

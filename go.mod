@@ -8,6 +8,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/lithdew/bytesutil v0.0.0-20200409052507-d98389230a59
+	github.com/lithdew/sqlutil v0.0.0-20200508165435-ee5c68997a73
 	github.com/stretchr/testify v1.5.1
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect

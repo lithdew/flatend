@@ -2,10 +2,8 @@ package flatend
 
 import (
 	"bytes"
-	"encoding/csv"
 	"encoding/gob"
 	"encoding/json"
-	"fmt"
 	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v3"
 )
@@ -37,7 +35,7 @@ func init() {
 	registerCodec(newCodec(tomlEncoder, tomlDecoder,
 		"application/x-toml", "text/x-toml", "application/toml", "text/x-toml",
 	))
-	registerCodec(newCodec(csvEncoder, csvDecoder, "application/csv", "text/csv"))
+	//registerCodec(newCodec(csvEncoder, csvDecoder, "application/csv", "text/csv"))
 	registerCodec(newCodec(gobEncoder, gobDecoder, "application/x-gob", "text/x-gob"))
 }
 
@@ -68,43 +66,47 @@ func marshalEncoder(f func(src interface{}) ([]byte, error)) EncodeFunc {
 	}
 }
 
-func csvEncoder(values Values) ([]byte, error) {
-	records := [][]string{make([]string, 0, len(values)), make([]string, 0, len(values))}
-
-	for k, v := range values {
-		records[0] = append(records[0], k)
-		records[1] = append(records[1], fmt.Sprint(v))
-	}
-
-	var b bytes.Buffer
-	if err := csv.NewWriter(&b).WriteAll(records); err != nil {
-		return nil, err
-	}
-
-	return b.Bytes(), nil
-}
-
-func csvDecoder(src []byte, values Values) error {
-	r := csv.NewReader(bytes.NewReader(src))
-
-	keys, err := r.Read()
-	if err != nil {
-		return fmt.Errorf("csv: failed to read keys: %w", err)
-	}
-
-	r.FieldsPerRecord = len(keys)
-
-	vals, err := r.Read()
-	if err != nil {
-		return fmt.Errorf("csv: failed to read values: %w", err)
-	}
-
-	for i := 0; i < len(keys); i++ {
-		values[keys[i]] = vals[i]
-	}
-
-	return nil
-}
+//func csvEncoder(values Values) ([]byte, error) {
+//	records := [][]string{make([]string, 0, len(values)), make([]string, 0, len(values))}
+//
+//	for k, v := range values {
+//		s, ok := v.(fmt.Stringer)
+//		if !ok {
+//			continue
+//		}
+//		records[0] = append(records[0], k)
+//		records[1] = append(records[1], s.String())
+//	}
+//
+//	var b bytes.Buffer
+//	if err := csv.NewWriter(&b).WriteAll(records); err != nil {
+//		return nil, err
+//	}
+//
+//	return b.Bytes(), nil
+//}
+//
+//func csvDecoder(src []byte, values Values) error {
+//	r := csv.NewReader(bytes.NewReader(src))
+//
+//	keys, err := r.Read()
+//	if err != nil {
+//		return fmt.Errorf("csv: failed to read keys: %w", err)
+//	}
+//
+//	r.FieldsPerRecord = len(keys)
+//
+//	vals, err := r.Read()
+//	if err != nil {
+//		return fmt.Errorf("csv: failed to read values: %w", err)
+//	}
+//
+//	for i := 0; i < len(keys); i++ {
+//		values[keys[i]] = vals[i]
+//	}
+//
+//	return nil
+//}
 
 func gobEncoder(values Values) ([]byte, error) {
 	var b bytes.Buffer

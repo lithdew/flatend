@@ -153,8 +153,6 @@ func getBodyParams(r *http.Request, codec *Codec, values map[string]interface{})
 type ContentEncode struct{}
 
 func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) error {
-	ctx.Out = ctx.In
-
 	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 
 	if codec == nil {
@@ -177,15 +175,7 @@ func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Reque
 	return nil
 }
 
-type QuerySQL struct {
-	MinNumRows int
-	MaxNumRows int
-
-	Stmt   *sql.Stmt
-	Params []string
-}
-
-func (h *QuerySQL) handlePagination(ctx *Context) {
+func HandlePagination(ctx *Context, min, max int) {
 	offset, provided := ctx.In["offset"].(int)
 	if !provided || offset < 0 {
 		ctx.In["offset"] = 0
@@ -194,15 +184,23 @@ func (h *QuerySQL) handlePagination(ctx *Context) {
 	limit, provided := ctx.In["limit"].(int)
 
 	switch {
-	case !provided || limit < h.MinNumRows || limit < 0:
-		ctx.In["limit"] = h.MinNumRows
-	case limit > h.MaxNumRows:
-		ctx.In["limit"] = h.MaxNumRows
+	case !provided || limit < min || limit < 0:
+		ctx.In["limit"] = min
+	case limit > max:
+		ctx.In["limit"] = max
 	}
 }
 
-func (h *QuerySQL) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) error {
-	h.handlePagination(ctx)
+type QuerySQL struct {
+	MinNumRows int
+	MaxNumRows int
+
+	Stmt   *sql.Stmt
+	Params []string
+}
+
+func (h *QuerySQL) Serve(ctx *Context, _ http.ResponseWriter, _ *http.Request) error {
+	HandlePagination(ctx, h.MinNumRows, h.MaxNumRows)
 
 	params := acquireValueBuffer(len(h.Params))
 	for _, param := range h.Params {
@@ -212,18 +210,27 @@ func (h *QuerySQL) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) e
 	releaseValueBuffer(params)
 
 	if err != nil {
-		return &Error{Status: http.StatusInternalServerError, Err: fmt.Errorf("failed to execute query: %w", err)}
+		return &Error{
+			Status: http.StatusInternalServerError,
+			Err:    fmt.Errorf("failed to execute query: %w", err),
+		}
 	}
 
 	defer rows.Close()
 
 	keys, err := rows.Columns()
 	if err != nil {
-		return &Error{Status: http.StatusInternalServerError, Err: fmt.Errorf("failed to fetch columns: %w", err)}
+		return &Error{
+			Status: http.StatusInternalServerError,
+			Err:    fmt.Errorf("failed to fetch columns: %w", err),
+		}
 	}
 
 	if len(keys) == 0 {
-		return &Error{Status: http.StatusInternalServerError, Err: errors.New("zero columns resultant from sql query")}
+		return &Error{
+			Status: http.StatusInternalServerError,
+			Err:    errors.New("zero columns resultant from sql query"),
+		}
 	}
 
 	vals := acquireValueBuffer(len(keys))
@@ -234,7 +241,10 @@ func (h *QuerySQL) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) e
 	for i := 0; rows.Next() && i < h.MaxNumRows; i++ {
 		err := rows.Scan(vals...)
 		if err != nil {
-			return &Error{Status: http.StatusInternalServerError, Err: fmt.Errorf("got an error while scanning: %w", err)}
+			return &Error{
+				Status: http.StatusInternalServerError,
+				Err:    fmt.Errorf("got an error while scanning: %w", err),
+			}
 		}
 
 		result := make(map[string]interface{}, len(keys))
@@ -245,6 +255,7 @@ func (h *QuerySQL) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) e
 		results = append(results, result)
 	}
 
+	ctx.Out["status"] = http.StatusOK
 	ctx.Out["results"] = results
 
 	return nil

@@ -47,6 +47,11 @@ func (s *Server) init() {
 	}
 }
 
+func (s *Server) Register(handlers ...Handler) {
+	s.once.Do(s.init)
+	s.config.Handlers = append(s.config.Handlers, handlers...)
+}
+
 func (s *Server) Serve(ln net.Listener) error {
 	s.once.Do(s.init)
 	return s.srv.Serve(ln)
@@ -129,7 +134,7 @@ func (s *Server) writeError(w http.ResponseWriter, err *Error) {
 		return
 	}
 
-	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set(HeaderContentTypeOptions, "nosniff")
 	w.WriteHeader(err.Status)
 	w.Write(buf)
 }

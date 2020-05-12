@@ -7,6 +7,7 @@ import (
 	"github.com/lithdew/flatend/httputil"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 const (
@@ -175,20 +176,46 @@ func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Reque
 	return nil
 }
 
-func HandlePagination(ctx *Context, min, max int) {
-	offset, provided := ctx.In["offset"].(int)
-	if !provided || offset < 0 {
-		ctx.In["offset"] = 0
+func HandlePagination(ctx *Context, min, max int) (offset, limit int, err error) {
+	var (
+		offsetProvided bool
+		limitProvided  bool
+	)
+
+	switch val := ctx.In["offset"].(type) {
+	case string:
+		parsed, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return min, max, err
+		}
+		offset, offsetProvided = int(parsed), true
+	case int:
+		offset, offsetProvided = val, true
 	}
 
-	limit, provided := ctx.In["limit"].(int)
+	if offset < 0 || !offsetProvided {
+		offset = 0
+	}
+
+	switch val := ctx.In["limit"].(type) {
+	case string:
+		parsed, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return min, max, err
+		}
+		limit, limitProvided = int(parsed), true
+	case int:
+		limit, limitProvided = val, true
+	}
 
 	switch {
-	case !provided || limit < min || limit < 0:
-		ctx.In["limit"] = min
+	case limit < min || !limitProvided:
+		limit = min
 	case limit > max:
-		ctx.In["limit"] = max
+		limit = max
 	}
+
+	return offset, limit, nil
 }
 
 type QuerySQL struct {
@@ -200,7 +227,7 @@ type QuerySQL struct {
 }
 
 func (h *QuerySQL) Serve(ctx *Context, _ http.ResponseWriter, _ *http.Request) error {
-	HandlePagination(ctx, h.MinNumRows, h.MaxNumRows)
+	limit, offset, paginationErr := HandlePagination(ctx, h.MinNumRows, h.MaxNumRows)
 
 	params := acquireValueBuffer(len(h.Params))
 	for _, param := range h.Params {
@@ -257,6 +284,11 @@ func (h *QuerySQL) Serve(ctx *Context, _ http.ResponseWriter, _ *http.Request) e
 
 	ctx.Out["status"] = http.StatusOK
 	ctx.Out["results"] = results
+
+	if paginationErr == nil {
+		ctx.Out["offset"] = offset
+		ctx.Out["limit"] = limit
+	}
 
 	return nil
 }

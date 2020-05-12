@@ -176,7 +176,7 @@ func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Reque
 	return nil
 }
 
-func HandlePagination(ctx *Context, min, max int) (offset, limit int, err error) {
+func HandlePagination(ctx *Context, min, max int) (offset, limit int, ok bool, err error) {
 	var (
 		offsetProvided bool
 		limitProvided  bool
@@ -186,7 +186,7 @@ func HandlePagination(ctx *Context, min, max int) (offset, limit int, err error)
 	case string:
 		parsed, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
-			return min, max, err
+			return min, max, false, err
 		}
 		offset, offsetProvided = int(parsed), true
 	case int:
@@ -201,7 +201,7 @@ func HandlePagination(ctx *Context, min, max int) (offset, limit int, err error)
 	case string:
 		parsed, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
-			return min, max, err
+			return min, max, false, err
 		}
 		limit, limitProvided = int(parsed), true
 	case int:
@@ -215,7 +215,7 @@ func HandlePagination(ctx *Context, min, max int) (offset, limit int, err error)
 		limit = max
 	}
 
-	return offset, limit, nil
+	return offset, limit, offsetProvided || limitProvided, nil
 }
 
 type QuerySQL struct {
@@ -227,7 +227,13 @@ type QuerySQL struct {
 }
 
 func (h *QuerySQL) Serve(ctx *Context, _ http.ResponseWriter, _ *http.Request) error {
-	limit, offset, paginationErr := HandlePagination(ctx, h.MinNumRows, h.MaxNumRows)
+	offset, limit, paginated, paginationErr := HandlePagination(ctx, h.MinNumRows, h.MaxNumRows)
+	if paginationErr != nil {
+		return &Error{
+			Status: http.StatusBadRequest,
+			Err:    paginationErr,
+		}
+	}
 
 	params := acquireValueBuffer(len(h.Params))
 	for _, param := range h.Params {
@@ -285,7 +291,7 @@ func (h *QuerySQL) Serve(ctx *Context, _ http.ResponseWriter, _ *http.Request) e
 	ctx.Out["status"] = http.StatusOK
 	ctx.Out["results"] = results
 
-	if paginationErr == nil {
+	if paginated {
 		ctx.Out["offset"] = offset
 		ctx.Out["limit"] = limit
 	}

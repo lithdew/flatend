@@ -108,7 +108,7 @@ func (s *Server) Shutdown() error {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.handler(s.Before...).ServeHTTP(w, r)
+	s.handler(append(s.Before, s.After...)...).ServeHTTP(w, r)
 	s.writeError(w, &Error{Status: http.StatusNotFound, Err: errors.New(http.StatusText(http.StatusNotFound))})
 }
 

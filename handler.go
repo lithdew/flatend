@@ -154,6 +154,10 @@ func getBodyParams(r *http.Request, codec *Codec, values map[string]interface{})
 type ContentEncode struct{}
 
 func (h *ContentEncode) Serve(ctx *Context, w http.ResponseWriter, _ *http.Request) error {
+	if len(ctx.Out) == 0 {
+		return nil
+	}
+
 	codec := ctx.Config.Codecs[w.Header().Get(HeaderContentType)]
 
 	if codec == nil {

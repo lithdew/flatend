@@ -56,7 +56,7 @@ func newCodec(encoder EncodeFunc, decoder DecodeFunc, tags ...string) *Codec {
 
 func unmarshalDecoder(f func(buf []byte, dst interface{}) error) DecodeFunc {
 	return func(buf []byte, values Values) error {
-		return f(buf, values)
+		return f(buf, &values)
 	}
 }
 
@@ -129,5 +129,5 @@ func tomlEncoder(values Values) ([]byte, error) {
 }
 
 func tomlDecoder(src []byte, values Values) error {
-	return toml.Unmarshal(src, values)
+	return toml.Unmarshal(src, &values)
 }

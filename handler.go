@@ -227,11 +227,11 @@ type QuerySQL struct {
 }
 
 func (h *QuerySQL) Serve(ctx *Context, _ http.ResponseWriter, _ *http.Request) error {
-	offset, limit, paginated, paginationErr := HandlePagination(ctx, h.MinNumRows, h.MaxNumRows)
-	if paginationErr != nil {
+	offset, limit, paginated, err := HandlePagination(ctx, h.MinNumRows, h.MaxNumRows)
+	if err != nil {
 		return &Error{
 			Status: http.StatusBadRequest,
-			Err:    paginationErr,
+			Err:    fmt.Errorf("failed to parse pagination params: %w", err),
 		}
 	}
 

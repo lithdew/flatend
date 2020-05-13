@@ -11,8 +11,8 @@ var octetTypes [math.MaxUint8 + 1]octetType
 type octetType byte
 
 const (
-	isToken octetType = 1 << iota
-	isSpace
+	IsToken octetType = 1 << iota
+	IsSpace
 )
 
 func init() {
@@ -22,10 +22,10 @@ func init() {
 		isChar := 0 <= c && c <= 127
 		isSeparator := strings.IndexRune(" \t\"(),/:;<=>?@[]\\{}", rune(c)) >= 0
 		if strings.IndexRune(" \t\r\n", rune(c)) >= 0 {
-			t |= isSpace
+			t |= IsSpace
 		}
 		if isChar && !isCtl && !isSeparator {
-			t |= isToken
+			t |= IsToken
 		}
 		octetTypes[c] = t
 	}

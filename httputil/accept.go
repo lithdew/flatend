@@ -53,7 +53,7 @@ func ParseAccept(header http.Header, key string) (specs []AcceptSpec) {
 func SkipSpace(s string) (rest string) {
 	i := 0
 	for ; i < len(s); i++ {
-		if octetTypes[s[i]]&isSpace == 0 {
+		if octetTypes[s[i]]&IsSpace == 0 {
 			break
 		}
 	}
@@ -64,7 +64,7 @@ func ExpectTokenSlash(s string) (token, rest string) {
 	i := 0
 	for ; i < len(s); i++ {
 		b := s[i]
-		if (octetTypes[b]&isToken == 0) && b != '/' {
+		if (octetTypes[b]&IsToken == 0) && b != '/' {
 			break
 		}
 	}

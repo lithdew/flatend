@@ -5,7 +5,8 @@ type Config struct {
 	CodecTypes   []string
 	DefaultCodec string
 
-	Handlers []Handler
+	Before []Handler
+	After  []Handler
 }
 
 func NewDefaultConfig() *Config {

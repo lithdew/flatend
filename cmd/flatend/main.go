@@ -26,14 +26,25 @@ func main() {
 	check(err)
 	defer wrap(stmt.Close)
 
-	srv := &flatend.Server{}
-	srv.Register(
-		&flatend.ContentType{},
-		&flatend.ContentLength{Max: 10 * 1024 * 1024},
-		&flatend.ContentDecode{},
-		&flatend.QuerySQL{MaxNumRows: 1000, Stmt: stmt},
-		&flatend.ContentEncode{},
-	)
+	srv := &flatend.Server{
+		Before: []flatend.Handler{
+			&flatend.ContentType{},
+			&flatend.ContentLength{Max: 10 * 1024 * 1024},
+			&flatend.ContentDecode{},
+		},
+		After: []flatend.Handler{
+			&flatend.ContentEncode{},
+		},
+		Routes: []flatend.Route{
+			{
+				Method: "POST",
+				Path:   "/post/:id",
+				Handlers: []flatend.Handler{
+					&flatend.QuerySQL{MaxNumRows: 1000, Stmt: stmt},
+				},
+			},
+		},
+	}
 
 	go func() { check(srv.Serve(ln)) }()
 	defer wrap(srv.Shutdown)

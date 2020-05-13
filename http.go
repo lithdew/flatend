@@ -2,13 +2,33 @@ package flatend
 
 import (
 	"context"
+	"errors"
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/bytesutil"
+	"github.com/lithdew/flatend/httputil"
 	"net"
 	"net/http"
 	"sync"
 	"time"
 )
+
+type Route struct {
+	Method   string
+	Path     string
+	Handlers []Handler
+}
+
+func ParseRoute(route string) (Route, error) {
+	var r Route
+
+	r.Method, r.Path = httputil.ExpectTokenSlash(route)
+	if r.Method == "" {
+		return r, errors.New("method not specified")
+	}
+	r.Path = httputil.SkipSpace(r.Path)
+
+	return r, nil
+}
 
 var _ http.Handler = (*Server)(nil)
 
@@ -19,6 +39,10 @@ type Server struct {
 
 	MaxHeaderBytes    int
 	ReadHeaderTimeout time.Duration
+
+	Before []Handler
+	Routes []Route
+	After  []Handler
 
 	once sync.Once
 
@@ -34,9 +58,20 @@ func (s *Server) init() {
 	}
 
 	s.router = httprouter.New()
+	s.router.MethodNotAllowed = s
+	s.router.NotFound = s
+
+	for _, route := range s.Routes {
+		handlers := make([]Handler, 0, len(s.Before)+len(route.Handlers)+len(s.After))
+		handlers = append(handlers, s.Before...)
+		handlers = append(handlers, route.Handlers...)
+		handlers = append(handlers, s.After...)
+
+		s.router.HandlerFunc(route.Method, route.Path, s.handler(handlers...))
+	}
 
 	s.srv = &http.Server{
-		Handler: s,
+		Handler: s.router,
 
 		IdleTimeout:  s.IdleTimeout,
 		ReadTimeout:  s.ReadTimeout,
@@ -45,11 +80,6 @@ func (s *Server) init() {
 		MaxHeaderBytes:    s.MaxHeaderBytes,
 		ReadHeaderTimeout: s.ReadHeaderTimeout,
 	}
-}
-
-func (s *Server) Register(handlers ...Handler) {
-	s.once.Do(s.init)
-	s.config.Handlers = append(s.config.Handlers, handlers...)
 }
 
 func (s *Server) Serve(ln net.Listener) error {
@@ -78,25 +108,30 @@ func (s *Server) Shutdown() error {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	//s.router.ServeHTTP(w, r)
+	s.handler(s.Before...).ServeHTTP(w, r)
+	s.writeError(w, &Error{Status: http.StatusNotFound, Err: errors.New(http.StatusText(http.StatusNotFound))})
+}
 
-	in := acquireValues()
-	out := acquireValues()
+func (s *Server) handler(handlers ...Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		in := acquireValues()
+		out := acquireValues()
 
-	defer releaseValues(in)
-	defer releaseValues(out)
+		defer releaseValues(in)
+		defer releaseValues(out)
 
-	ctx := &Context{
-		Config: s.config,
-		In:     in,
-		Out:    out,
-	}
+		ctx := &Context{
+			Config: s.config,
+			In:     in,
+			Out:    out,
+		}
 
-	for _, handler := range s.config.Handlers {
-		err := handler.Serve(ctx, w, r)
-		if err != nil {
-			s.writeError(w, err.(*Error))
-			break
+		for _, handler := range handlers {
+			err := handler.Serve(ctx, w, r)
+			if err, ok := err.(*Error); err != nil && ok {
+				s.writeError(w, err)
+				break
+			}
 		}
 	}
 }

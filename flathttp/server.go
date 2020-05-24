@@ -4,16 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
 
 var DefaultShutdownTimeout = 5 * time.Second
-
-var ErrAlreadyListening = errors.New("already listening")
 
 type Server struct {
 	cfg Config
@@ -23,7 +21,7 @@ type Server struct {
 	wg   sync.WaitGroup          // all served goroutines
 	lm   sync.Mutex              // lifecycle mutex\
 	em   sync.Mutex              // errors mutex
-	errs []error                 // errors
+	errs []string                // errors
 }
 
 func NewServer(cfg *Config) *Server {
@@ -37,18 +35,18 @@ func NewServer(cfg *Config) *Server {
 	return srv
 }
 
-func (s *Server) Start() []error {
+func (s *Server) Start() error {
 	s.lm.Lock()
 	defer s.lm.Unlock()
 
 	err := s.start()
 	if err != nil {
-		return append([]error{err}, s.stop()...)
+		return s.stop()
 	}
 	return nil
 }
 
-func (s *Server) Stop() []error {
+func (s *Server) Stop() error {
 	s.lm.Lock()
 	defer s.lm.Unlock()
 
@@ -119,24 +117,20 @@ func (s *Server) listen(a Addr) error {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-
 		err := eof(srv.Serve(ln))
-		if err == nil {
-			return
+		if err != nil {
+			err := fmt.Sprintf("unexpected error finishing serving %s (err=%q)", a.Addr, err)
+			s.em.Lock()
+			s.errs = append(s.errs, err)
+			s.em.Unlock()
 		}
-
-		err = fmt.Errorf("flathttp [%s] (serve error): %w", a.Addr, err)
-
-		s.em.Lock()
-		s.errs = append(s.errs, err)
-		s.em.Unlock()
 	}()
 
 	return nil
 }
 
-func (s *Server) stop() []error {
-	var errs []error
+func (s *Server) stop() error {
+	var errs []string
 
 	// Gracefully shutdown the server.
 
@@ -149,12 +143,18 @@ func (s *Server) stop() []error {
 
 	err := s.srv.Shutdown(ctx)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("flathttp: failed to gracefully shutdown the server: %w", err))
+		errs = append(errs, fmt.Sprintf("failed to gracefully shutdown the server (err=%q)", err.Error()))
 	}
 
 	<-ctx.Done()
 
-	errs = append(errs, s.close()...)
+	for addr, ln := range s.lns {
+		err := eof(ln.Close())
+		if err != nil {
+			err := fmt.Sprintf("[%s] failed to close listener (err=%q)", addr, err)
+			errs = append(errs, err)
+		}
+	}
 
 	if cancel != nil {
 		cancel()
@@ -163,46 +163,17 @@ func (s *Server) stop() []error {
 	// Wait until all listeners are closed, and if errors rise up, include them in the result.
 
 	s.wg.Wait()
-
+	errs = append(errs, s.errs...)
+	s.errs = s.errs[:0]
 	s.cfg.reset()
-
 	s.srv = nil
-
 	for addr := range s.lns {
 		delete(s.lns, addr)
 	}
 
-	errs = append(errs, s.errs...)
-	s.errs = s.errs[:0]
-
-	return errs
-}
-
-func eof(err error) error {
-	var op *net.OpError
-
-	switch {
-	case errors.As(err, &op) && op.Err.Error() == "use of closed network connection":
+	if len(errs) == 0 {
 		return nil
-	case errors.Is(err, http.ErrServerClosed):
-		return nil
-	case errors.Is(err, io.EOF):
-		return nil
-	default:
-		return err
-	}
-}
-
-func (s *Server) close() []error {
-	var errs []error
-
-	for addr, ln := range s.lns {
-		err := eof(ln.Close())
-		if err != nil {
-			err = fmt.Errorf("flathttp [%s] (listener close): %w", addr, err)
-			errs = append(errs, err)
-		}
 	}
 
-	return errs
+	return fmt.Errorf("flathttp: failed to stop server: %s", strings.Join(errs, ", "))
 }

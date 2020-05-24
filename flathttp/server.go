@@ -37,16 +37,6 @@ func NewServer(cfg *Config) *Server {
 	return srv
 }
 
-func (s *Server) Update(cfg *Config) {
-	s.lm.Lock()
-	defer s.lm.Unlock()
-
-	if cfg == nil {
-		cfg = &Config{}
-	}
-	s.cfg = *cfg
-}
-
 func (s *Server) Start() []error {
 	s.lm.Lock()
 	defer s.lm.Unlock()
@@ -56,6 +46,23 @@ func (s *Server) Start() []error {
 		return append([]error{err}, s.stop()...)
 	}
 	return nil
+}
+
+func (s *Server) Stop() []error {
+	s.lm.Lock()
+	defer s.lm.Unlock()
+
+	return s.stop()
+}
+
+func (s *Server) Update(cfg *Config) {
+	s.lm.Lock()
+	defer s.lm.Unlock()
+
+	if cfg == nil {
+		cfg = &Config{}
+	}
+	s.cfg = *cfg
 }
 
 func (s *Server) start() error {
@@ -126,13 +133,6 @@ func (s *Server) listen(a Addr) error {
 	}()
 
 	return nil
-}
-
-func (s *Server) Stop() []error {
-	s.lm.Lock()
-	defer s.lm.Unlock()
-
-	return s.stop()
 }
 
 func (s *Server) stop() []error {

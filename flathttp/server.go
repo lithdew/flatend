@@ -19,7 +19,7 @@ type Server struct {
 
 	lns  map[string]net.Listener // all listeners
 	wg   sync.WaitGroup          // all served goroutines
-	lm   sync.Mutex              // lifecycle mutex\
+	lm   sync.Mutex              // lifecycle mutex
 	em   sync.Mutex              // errors mutex
 	errs []string                // errors
 }
@@ -83,13 +83,12 @@ func (s *Server) start() error {
 
 	for _, a := range addrs {
 		err := s.listen(a)
-		if err == nil {
-			continue
+		if err != nil {
+			if errors.Is(err, ErrAlreadyListening) {
+				continue
+			}
+			return err
 		}
-		if errors.Is(err, ErrAlreadyListening) {
-			continue
-		}
-		return err
 	}
 
 	return nil

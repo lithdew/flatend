@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"golang.org/x/time/rate"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -59,19 +60,28 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case !m.WaitUponRateLimit && delay > 0:
 			slot.CancelAt(now)
 
-			tmpl := `{"error": "endpoint is too busy: you are now rate-limited", "max_per_second": [[MAX]], "burst_rate": [[BURST]], "wait_for": "[[WAIT]]"}`
-
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 
+			if delay < math.MaxInt64 {
+				w.Header().Set("Retry-After", strconv.FormatInt(int64(delay.Seconds()), 10))
+			}
+
+			fields := F{
+				"MAX":   strconv.FormatFloat(float64(m.RateLimiter.Limit()), 'g', -1, 64),
+				"BURST": strconv.Itoa(m.RateLimiter.Burst()),
+				"WAIT":  delay.String(),
+			}
+
+			var b []byte
+			if delay < math.MaxInt64 {
+				b = T(`{"error": "endpoint is too busy: wait a bit", "max_per_second": [[MAX]], "burst_rate": [[BURST]], "wait_for": "[[WAIT]]"}`, fields)
+			} else {
+				b = T(`{"error": "endpoint is too busy: try again later", "max_per_second": [[MAX]], "burst_rate": [[BURST]]}`, fields)
+			}
+
 			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write(
-				T(tmpl, F{
-					"MAX":   strconv.FormatFloat(float64(m.RateLimiter.Limit()), 'g', -1, 64),
-					"BURST": strconv.FormatInt(int64(m.RateLimiter.Burst()), 10),
-					"WAIT":  delay.String(),
-				}),
-			)
+			w.Write(b)
 			return
 		case m.WaitUponRateLimit && delay > 0:
 			timer := time.NewTimer(delay)

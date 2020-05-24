@@ -13,7 +13,7 @@ import (
 //		MinContentLength: -1,
 //
 //		RateLimiter:       rate.NewLimiter(1, 1),
-//		WaitUponRateLimit: true,
+//		WaitUponRateLimit: false,
 //	})
 //}
 

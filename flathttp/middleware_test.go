@@ -8,6 +8,15 @@ import (
 	"testing"
 )
 
+//func TestMiddlewareOnServer(t *testing.T) {
+//	http.ListenAndServe(":44444", &Middleware{
+//		MinContentLength: -1,
+//
+//		RateLimiter:       rate.NewLimiter(1, 1),
+//		WaitUponRateLimit: true,
+//	})
+//}
+
 func TestContentLength(t *testing.T) {
 	cases := []struct {
 		given, min, max int64

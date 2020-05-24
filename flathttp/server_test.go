@@ -11,13 +11,17 @@ import (
 func getAvailableAddrs(t testing.TB, scheme string, n int) []string {
 	t.Helper()
 
+	lns := make([]net.Listener, 0, n)
 	addrs := make([]string, 0, n)
 	for i := 0; i < n; i++ {
 		ln, err := net.Listen(scheme, ":0")
 		require.NoError(t, err)
-		require.NoError(t, ln.Close())
 
+		lns = append(lns, ln)
 		addrs = append(addrs, scheme+"://"+ln.Addr().String())
+	}
+	for _, ln := range lns {
+		require.NoError(t, ln.Close())
 	}
 	return addrs
 }

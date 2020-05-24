@@ -21,6 +21,8 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if m.Timeout > 0 {
 		ctx, cancel := context.WithTimeout(r.Context(), m.Timeout)
 
+		r = r.WithContext(ctx)
+
 		defer func() {
 			cancel()
 

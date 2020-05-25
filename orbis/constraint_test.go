@@ -35,26 +35,35 @@ func (t token) repr(q string) string {
 	return q[t.ts:t.te]
 }
 
+func lower(r rune) rune {
+	return ('a' - 'A') | r
+}
+
 const whitespace = uint64(1<<'\t' | 1<<'\n' | 1<<'\r' | 1<<' ')
 
 func isWhitespace(r rune) bool {
 	return whitespace&(1<<uint(r)) != 0
 }
 
-func lower(r rune) rune {
-	return ('a' - 'A') | r
+func isBinRune(r rune) bool {
+	return r == '0' || r == '1'
 }
 
-func isDigitRune(r rune) bool {
+func isOctalRune(r rune) bool {
+	return r >= '0' && r <= '7'
+}
+
+func isDecimalRune(r rune) bool {
 	return r >= '0' && r <= '9'
 }
 
 func isHexRune(r rune) bool {
-	return isDigitRune(r) || (r >= 'a' && r <= 'f')
-}
-
-func isBinRune(r rune) bool {
-	return r >= '0' && r <= '7'
+	if isDecimalRune(r) {
+		return true
+	} else {
+		r = lower(r)
+	}
+	return r >= 'a' && r <= 'f'
 }
 
 func TestConstraint(t *testing.T) {
@@ -92,42 +101,32 @@ func TestConstraint(t *testing.T) {
 	lexEscapeChar := func(quote rune) {
 		r := next()
 
+		skip := func(n int, pred func(rune) bool) {
+			for n > 0 {
+				r = next()
+				if !pred(r) || r == eof {
+					panic("bad")
+				}
+				n--
+			}
+		}
+
 		switch r {
 		case eof:
 			panic("got eof while parsing escape literal")
 		case quote, 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\':
 			// ignore
 		case 'x':
-			for n := 0; n < 2; n++ {
-				r := lower(next())
-				if !isHexRune(r) || r == eof {
-					panic("bad 16")
-				}
-			}
+			skip(2, isHexRune)
 		case 'u':
-			for n := 0; n < 4; n++ {
-				r := lower(next())
-				if !isHexRune(r) || r == eof {
-					panic("bad 32")
-				}
-			}
+			skip(4, isHexRune)
 		case 'U':
-			for n := 0; n < 8; n++ {
-				r := lower(next())
-				if !isHexRune(r) || r == eof {
-					panic("bad 64")
-				}
-			}
+			skip(8, isHexRune)
 		default:
-			if !isBinRune(r) || r == eof {
+			if !isOctalRune(r) || r == eof {
 				panic("bad 8")
 			}
-			for n := 0; n < 2; n++ {
-				r = next()
-				if !isBinRune(r) || r == eof {
-					panic("bad 8")
-				}
-			}
+			skip(2, isOctalRune)
 		}
 	}
 
@@ -140,73 +139,14 @@ func TestConstraint(t *testing.T) {
 
 		float = r == '.'
 
-		if r == '0' {
-			prefix = lower(next())
-
-			switch prefix {
-			case 'x':
-				for {
-					r = lower(next())
-					switch {
-					case r == '_':
-						separator = true
-						continue
-					case isHexRune(r):
-						digit = true
-						continue
-					}
-					break
-				}
-			case 'o':
-				for {
-					r = next()
-					switch {
-					case r == '_':
-						separator = true
-						continue
-					case isBinRune(r):
-						digit = true
-						continue
-					}
-					break
-				}
-			case 'b':
-				for {
-					r = next()
-					switch r {
-					case '_':
-						separator = true
-						continue
-					case '0', '1':
-						digit = true
-						continue
-					}
-					break
-				}
-			default:
-				prefix, digit = '0', true
-
-				for {
-					switch {
-					case r == '_':
-						separator = true
-						r = next()
-						continue
-					case isBinRune(r):
-						r = next()
-						continue
-					}
-					break
-				}
-			}
-		} else {
+		skip := func(pred func(rune) bool) {
 			for {
 				switch {
 				case r == '_':
 					separator = true
 					r = next()
 					continue
-				case isDigitRune(r):
+				case pred(r):
 					digit = true
 					r = next()
 					continue
@@ -215,7 +155,26 @@ func TestConstraint(t *testing.T) {
 			}
 		}
 
-		// ^ stops at the first offending character
+		if r == '0' {
+			prefix = lower(next())
+
+			switch prefix {
+			case 'x':
+				r = next()
+				skip(isHexRune)
+			case 'o':
+				r = next()
+				skip(isOctalRune)
+			case 'b':
+				r = next()
+				skip(isBinRune)
+			default:
+				prefix, digit = '0', true
+				skip(isOctalRune)
+			}
+		} else {
+			skip(isDecimalRune)
+		}
 
 		if !float {
 			float = r == '.'
@@ -226,45 +185,15 @@ func TestConstraint(t *testing.T) {
 				panic("invalid radix point")
 			}
 
+			r = lower(next())
+
 			switch prefix {
 			case 'x':
-				for {
-					r = lower(next())
-					switch {
-					case r == '_':
-						separator = true
-						continue
-					case isHexRune(r):
-						digit = true
-						continue
-					}
-					break
-				}
+				skip(isHexRune)
 			case '0':
-				for {
-					r = next()
-					switch {
-					case r == '_':
-						separator = true
-						continue
-					case isBinRune(r):
-						continue
-					}
-					break
-				}
+				skip(isOctalRune)
 			default:
-				for {
-					r = next()
-					switch {
-					case r == '_':
-						separator = true
-						continue
-					case isDigitRune(r):
-						digit = true
-						continue
-					}
-					break
-				}
+				skip(isDecimalRune)
 			}
 		}
 
@@ -290,21 +219,7 @@ func TestConstraint(t *testing.T) {
 			float = true
 			digit = false
 
-			for {
-				switch {
-				case r == '_':
-					r = next()
-					separator = true
-					continue
-				case isDigitRune(r):
-					r = next()
-					digit = true
-					continue
-				}
-				break
-			}
-
-			// ^ stops at the first offending character
+			skip(isDecimalRune)
 
 			if !digit {
 				panic("exponent has no digits")
@@ -358,7 +273,7 @@ func TestConstraint(t *testing.T) {
 			break
 		}
 
-		if isDigitRune(r) || r == '.' {
+		if isDecimalRune(r) || r == '.' {
 			s := bc - 1
 
 			if lexNumber(r) {

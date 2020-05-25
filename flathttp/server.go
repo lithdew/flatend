@@ -180,10 +180,6 @@ func (s *Server) init() error {
 		ReadHeaderTimeout: s.cfg.ReadHeaderTimeout,
 	}
 
-	if len(s.cfg.addrs) == 0 {
-		s.cfg.addrs = append(s.cfg.addrs, Addr{Addr: "tcp://:0", Scheme: "tcp", Host: ":0"})
-	}
-
 	return nil
 }
 

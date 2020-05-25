@@ -40,6 +40,11 @@ func (c *Config) Parse() error {
 		}
 		c.addrs = append(c.addrs, Addr{Addr: addr, Scheme: u.Scheme, Host: u.Host})
 	}
+
+	if len(c.addrs) == 0 {
+		c.addrs = append(c.addrs, Addr{Addr: "tcp://:0", Scheme: "tcp", Host: ":0"})
+	}
+
 	return nil
 }
 

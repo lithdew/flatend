@@ -43,6 +43,6 @@ func (c *Config) Parse() error {
 	return nil
 }
 
-func (c *Config) reset() {
+func (c *Config) Reset() {
 	c.addrs = c.addrs[:0]
 }

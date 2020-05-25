@@ -84,14 +84,9 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Write(b)
 			return
 		case m.WaitUponRateLimit && delay > 0:
-			timer := time.NewTimer(delay)
-			select {
-			case <-timer.C:
-			case <-r.Context().Done():
-				timer.Stop()
+			if err := sleep(r.Context(), delay); err != nil {
 				return
 			}
-			timer.Stop()
 		}
 	}
 
@@ -110,5 +105,16 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}),
 		)
 		return
+	}
+}
+
+func sleep(ctx context.Context, duration time.Duration) error {
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

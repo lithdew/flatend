@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/julienschmidt/httprouter"
 	"net"
 	"net/http"
 	"strings"
@@ -15,7 +16,9 @@ var DefaultShutdownTimeout = 5 * time.Second
 
 type Server struct {
 	cfg Config
-	srv *http.Server
+
+	router *httprouter.Router
+	srv    *http.Server
 
 	lns  map[string]net.Listener // all listeners
 	wg   sync.WaitGroup          // all served goroutines
@@ -64,24 +67,11 @@ func (s *Server) Update(cfg *Config) {
 }
 
 func (s *Server) start() error {
-	if err := s.cfg.Parse(); err != nil {
+	if err := s.init(); err != nil {
 		return err
 	}
 
-	s.srv = &http.Server{
-		MaxHeaderBytes:    s.cfg.MaxHeaderBytes,
-		ReadTimeout:       s.cfg.ReadTimeout,
-		WriteTimeout:      s.cfg.WriteTimeout,
-		IdleTimeout:       s.cfg.IdleTimeout,
-		ReadHeaderTimeout: s.cfg.ReadHeaderTimeout,
-	}
-
-	addrs := s.cfg.addrs
-	if len(addrs) == 0 {
-		addrs = append(addrs, Addr{Addr: "tcp://:0", Scheme: "tcp", Host: ":0"})
-	}
-
-	for _, a := range addrs {
+	for _, a := range s.cfg.addrs {
 		err := s.listen(a)
 		if err != nil {
 			if errors.Is(err, ErrAlreadyListening) {
@@ -162,17 +152,48 @@ func (s *Server) stop() error {
 	// Wait until all listeners are closed, and if errors rise up, include them in the result.
 
 	s.wg.Wait()
+
 	errs = append(errs, s.errs...)
-	s.errs = s.errs[:0]
-	s.cfg.reset()
-	s.srv = nil
-	for addr := range s.lns {
-		delete(s.lns, addr)
-	}
+
+	s.cleanup()
 
 	if len(errs) == 0 {
 		return nil
 	}
 
 	return fmt.Errorf("flathttp: failed to stop server: %s", strings.Join(errs, ", "))
+}
+
+func (s *Server) init() error {
+	if err := s.cfg.Parse(); err != nil {
+		return err
+	}
+
+	s.router = httprouter.New()
+
+	s.srv = &http.Server{
+		Handler:           s.router,
+		MaxHeaderBytes:    s.cfg.MaxHeaderBytes,
+		ReadTimeout:       s.cfg.ReadTimeout,
+		WriteTimeout:      s.cfg.WriteTimeout,
+		IdleTimeout:       s.cfg.IdleTimeout,
+		ReadHeaderTimeout: s.cfg.ReadHeaderTimeout,
+	}
+
+	if len(s.cfg.addrs) == 0 {
+		s.cfg.addrs = append(s.cfg.addrs, Addr{Addr: "tcp://:0", Scheme: "tcp", Host: ":0"})
+	}
+
+	return nil
+}
+
+func (s *Server) cleanup() {
+	s.cfg.Reset()
+
+	s.srv = nil
+	s.errs = nil
+
+	for addr := range s.lns {
+		delete(s.lns, addr)
+	}
 }

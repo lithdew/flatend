@@ -45,6 +45,18 @@ func lower(r rune) rune {
 	return ('a' - 'A') | r
 }
 
+func isDigitRune(r rune) bool {
+	return r >= '0' && r <= '9'
+}
+
+func isHexRune(r rune) bool {
+	return isDigitRune(r) || (r >= 'a' && r <= 'f')
+}
+
+func isBinRune(r rune) bool {
+	return r >= '0' && r <= '7'
+}
+
 func TestConstraint(t *testing.T) {
 	q := `"\xffg" | 0.123e4 & "yes"`
 
@@ -81,28 +93,28 @@ func TestConstraint(t *testing.T) {
 		case '0', '1', '2', '3', '4', '5', '6', '7':
 			for n := 0; n < 2; n++ {
 				r := next()
-				if !(r >= '0' && r <= '7') || r == eof {
+				if !isBinRune(r) || r == eof {
 					panic("bad 8")
 				}
 			}
 		case 'x':
 			for n := 0; n < 2; n++ {
 				r := lower(next())
-				if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) || r == eof {
+				if !isHexRune(r) || r == eof {
 					panic("bad 16")
 				}
 			}
 		case 'u':
 			for n := 0; n < 4; n++ {
 				r := lower(next())
-				if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) || r == eof {
+				if !isHexRune(r) || r == eof {
 					panic("bad 32")
 				}
 			}
 		case 'U':
 			for n := 0; n < 8; n++ {
 				r := lower(next())
-				if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) || r == eof {
+				if !isHexRune(r) || r == eof {
 					panic("bad 64")
 				}
 			}
@@ -133,7 +145,7 @@ func TestConstraint(t *testing.T) {
 					case r == '_':
 						separator = true
 						continue
-					case (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f'):
+					case isHexRune(r):
 						digit = true
 						continue
 					}
@@ -146,7 +158,7 @@ func TestConstraint(t *testing.T) {
 					case r == '_':
 						separator = true
 						continue
-					case r >= '0' && r <= '7':
+					case isBinRune(r):
 						digit = true
 						continue
 					}
@@ -174,7 +186,7 @@ func TestConstraint(t *testing.T) {
 						separator = true
 						r = next()
 						continue
-					case r >= '0' && r <= '7':
+					case isBinRune(r):
 						r = next()
 						continue
 					}
@@ -188,7 +200,7 @@ func TestConstraint(t *testing.T) {
 					separator = true
 					r = next()
 					continue
-				case r >= '0' && r <= '9':
+				case isDigitRune(r):
 					digit = true
 					r = next()
 					continue
@@ -216,7 +228,7 @@ func TestConstraint(t *testing.T) {
 					case r == '_':
 						separator = true
 						continue
-					case (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f'):
+					case isHexRune(r):
 						digit = true
 						continue
 					}
@@ -229,7 +241,7 @@ func TestConstraint(t *testing.T) {
 					case r == '_':
 						separator = true
 						continue
-					case r >= '0' && r <= '7':
+					case isBinRune(r):
 						continue
 					}
 					break
@@ -241,7 +253,7 @@ func TestConstraint(t *testing.T) {
 					case r == '_':
 						separator = true
 						continue
-					case r >= '0' && r <= '9':
+					case isDigitRune(r):
 						digit = true
 						continue
 					}
@@ -278,7 +290,7 @@ func TestConstraint(t *testing.T) {
 					r = next()
 					separator = true
 					continue
-				case r >= '0' && r <= '9':
+				case isDigitRune(r):
 					r = next()
 					digit = true
 					continue
@@ -340,7 +352,7 @@ func TestConstraint(t *testing.T) {
 			break
 		}
 
-		if r >= '0' && r <= '9' || r == '.' {
+		if isDigitRune(r) || r == '.' {
 			s := bc - 1
 
 			if lexNumber(r) {

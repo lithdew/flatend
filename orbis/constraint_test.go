@@ -58,7 +58,7 @@ func isBinRune(r rune) bool {
 }
 
 func TestConstraint(t *testing.T) {
-	q := `"\xffg" | 0.123e4 & "yes"`
+	q := `"\377" | 0.123e4 & "yes"`
 
 	bc := 0   // byte count
 	cc := 0   // char count
@@ -87,16 +87,13 @@ func TestConstraint(t *testing.T) {
 	tokens := make([]token, 0, len(q)/2)
 
 	lexEscapeChar := func(quote rune) {
-		switch next() {
+		r := next()
+
+		switch r {
+		case eof:
+			panic("got eof while parsing escape literal")
 		case quote, 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\':
 			// ignore
-		case '0', '1', '2', '3', '4', '5', '6', '7':
-			for n := 0; n < 2; n++ {
-				r := next()
-				if !isBinRune(r) || r == eof {
-					panic("bad 8")
-				}
-			}
 		case 'x':
 			for n := 0; n < 2; n++ {
 				r := lower(next())
@@ -118,10 +115,16 @@ func TestConstraint(t *testing.T) {
 					panic("bad 64")
 				}
 			}
-		case eof:
-			panic("got eof while parsing escape literal")
 		default:
-			panic("unknown escape literal")
+			if !isBinRune(r) || r == eof {
+				panic("bad 8")
+			}
+			for n := 0; n < 2; n++ {
+				r = next()
+				if !isBinRune(r) || r == eof {
+					panic("bad 8")
+				}
+			}
 		}
 	}
 

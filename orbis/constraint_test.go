@@ -65,7 +65,10 @@ func TestConstraint(t *testing.T) {
 	lcw := -1 // last char width
 
 	next := func() rune {
-		if bc == len(q) {
+		if bc >= len(q) {
+			if bc > len(q) {
+				panic("went too far ahead")
+			}
 			return eof
 		}
 		r, cw := utf8.DecodeRuneInString(q[bc:])

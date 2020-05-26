@@ -9,7 +9,8 @@ import (
 type tokenType int
 
 const (
-	tokenGT tokenType = iota
+	tokenEOF tokenType = iota
+	tokenGT
 	tokenGTE
 	tokenLT
 	tokenLTE
@@ -95,8 +96,6 @@ func TestConstraint(t *testing.T) {
 		lcw = -1
 		cc--
 	}
-
-	tokens := make([]token, 0, len(q)/2)
 
 	lexEscapeChar := func(quote rune) {
 		r := next()
@@ -235,8 +234,8 @@ func TestConstraint(t *testing.T) {
 		return float
 	}
 
-	lexText := func(quote rune) {
-		tokens = append(tokens, token{typ: tokenStringStart, ts: bc - 1, te: bc})
+	lexText := func(quote rune) token {
+		//tokens = append(tokens, token{typ: tokenStringStart, ts: bc - 1, te: bc})
 
 		start, end := bc, -1
 
@@ -256,66 +255,63 @@ func TestConstraint(t *testing.T) {
 
 		if end != -1 {
 			if start != end {
-				tokens = append(tokens, token{typ: tokenText, ts: start, te: end})
+				return token{typ: tokenText, ts: start, te: end}
 			}
-			tokens = append(tokens, token{typ: tokenStringEnd, ts: bc - 1, te: bc})
-		} else {
-			panic("unterminated")
+			//tokens = append(tokens, token{typ: tokenStringEnd, ts: bc - 1, te: bc})
 		}
+		panic("unterminated")
 	}
 
-	for {
+	lex := func() token {
 		r := next()
 		for isWhitespace(r) {
 			r = next()
 		}
 		if r == eof {
-			break
+			return token{typ: tokenEOF, ts: bc - 1, te: bc}
 		}
 
 		if isDecimalRune(r) || r == '.' {
 			s := bc - 1
 
 			if lexNumber(r) {
-				tokens = append(tokens, token{typ: tokenFloat, ts: s, te: bc})
-			} else {
-				tokens = append(tokens, token{typ: tokenInt, ts: s, te: bc})
+				return token{typ: tokenFloat, ts: s, te: bc}
 			}
-
-			continue
+			return token{typ: tokenInt, ts: s, te: bc}
 		}
 
 		switch r {
 		case '\'', '"':
-			lexText(r)
+			return lexText(r)
 		case '>':
 			r = next()
 			if r == '=' {
-				tokens = append(tokens, token{typ: tokenGTE, ts: bc - 2, te: bc})
+				return token{typ: tokenGTE, ts: bc - 2, te: bc}
 			} else {
 				prev()
-				tokens = append(tokens, token{typ: tokenGT, ts: bc - 1, te: bc})
+				return token{typ: tokenGT, ts: bc - 1, te: bc}
 			}
 		case '<':
 			r = next()
 			if r == '=' {
-				tokens = append(tokens, token{typ: tokenLTE, ts: bc - 2, te: bc})
+				return token{typ: tokenLTE, ts: bc - 2, te: bc}
 			} else {
 				prev()
-				tokens = append(tokens, token{typ: tokenLT, ts: bc - 1, te: bc})
+				return token{typ: tokenLT, ts: bc - 1, te: bc}
 			}
 		case '(':
-			tokens = append(tokens, token{typ: tokenBracketStart, ts: bc - 1, te: bc})
+			return token{typ: tokenBracketStart, ts: bc - 1, te: bc}
 		case ')':
-			tokens = append(tokens, token{typ: tokenBracketEnd, ts: bc - 1, te: bc})
+			return token{typ: tokenBracketEnd, ts: bc - 1, te: bc}
 		case '&':
-			tokens = append(tokens, token{typ: tokenAND, ts: bc - 1, te: bc})
+			return token{typ: tokenAND, ts: bc - 1, te: bc}
 		case '|':
-			tokens = append(tokens, token{typ: tokenOR, ts: bc - 1, te: bc})
+			return token{typ: tokenOR, ts: bc - 1, te: bc}
 		}
+		panic(fmt.Sprintf("unknown rune %q", string(r)))
 	}
 
-	for _, tok := range tokens {
+	for tok := lex(); tok.typ != tokenEOF; tok = lex() {
 		fmt.Printf("%s\n", tok.repr(q))
 	}
 }

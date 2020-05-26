@@ -134,8 +134,8 @@ type node struct {
 }
 
 func TestConstraint(t *testing.T) {
-	q := `!"test"`
-	val := "test"
+	q := `123 | "hello " + "world"`
+	val := "hello world"
 
 	bc := 0   // byte count
 	cc := 0   // char count
@@ -529,6 +529,65 @@ func TestConstraint(t *testing.T) {
 			default:
 				panic(`'<=' not paired with int or float`)
 			}
+		case tokPlus:
+			l := len(vals) - 2
+			r := len(vals) - 1
+			switch vals[l].typ {
+			case nodeInt:
+				switch vals[r].typ {
+				case nodeInt:
+					vals[l] = node{typ: nodeInt, int: vals[l].int + vals[r].int}
+				case nodeFloat:
+					vals[l] = node{typ: nodeFloat, float: float64(vals[l].int) + vals[r].float}
+				default:
+					panic(`lhs is int, rhs for '+' must be an int or float`)
+				}
+			case nodeFloat:
+				switch vals[r].typ {
+				case nodeInt:
+					vals[l] = node{typ: nodeFloat, float: vals[l].float + float64(vals[r].int)}
+				case nodeFloat:
+					vals[l] = node{typ: nodeFloat, float: vals[l].float + vals[r].float}
+				default:
+					panic(`lhs is float, rhs for '+' must be an int or float`)
+				}
+			case nodeText:
+				switch vals[r].typ {
+				case nodeText:
+					vals[l] = node{typ: nodeText, text: vals[l].text + vals[r].text}
+				default:
+					panic(`lhs is string, rhs for '+' must be a string`)
+				}
+			default:
+				panic("??? '+'")
+			}
+			vals = vals[:r]
+		case tokMinus:
+			l := len(vals) - 2
+			r := len(vals) - 1
+			switch vals[l].typ {
+			case nodeInt:
+				switch vals[r].typ {
+				case nodeInt:
+					vals[l] = node{typ: nodeInt, int: vals[l].int - vals[r].int}
+				case nodeFloat:
+					vals[l] = node{typ: nodeFloat, float: float64(vals[l].int) - vals[r].float}
+				default:
+					panic(`lhs is int, rhs for '+' must be an int or float`)
+				}
+			case nodeFloat:
+				switch vals[r].typ {
+				case nodeInt:
+					vals[l] = node{typ: nodeFloat, float: vals[l].float - float64(vals[r].int)}
+				case nodeFloat:
+					vals[l] = node{typ: nodeFloat, float: vals[l].float - vals[r].float}
+				default:
+					panic(`lhs is float, rhs for '+' must be an int or float`)
+				}
+			default:
+				panic("??? '+'")
+			}
+			vals = vals[:r]
 		case tokBang:
 			i := len(vals) - 1
 			switch vals[i].typ {

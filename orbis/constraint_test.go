@@ -57,15 +57,15 @@ type rule struct {
 }
 
 var rules = [...]rule{
-	tokNegate: {prec: 5, right: true},
-
-	tokPlus:  {prec: 4},
-	tokMinus: {prec: 4},
+	tokNegate: {prec: 4, right: true},
 
 	tokGT:  {prec: 3, right: true},
 	tokGTE: {prec: 3, right: true},
 	tokLT:  {prec: 3, right: true},
 	tokLTE: {prec: 3, right: true},
+
+	tokPlus:  {prec: 2},
+	tokMinus: {prec: 2},
 
 	tokAND: {prec: 1},
 	tokOR:  {prec: 1},
@@ -73,11 +73,61 @@ var rules = [...]rule{
 
 const eof = rune(0)
 
+type constraintRule struct {
+	is    int64
+	ie    int64
+	fs    float64
+	fe    float64
+	texts []string
+}
+
+func newConstraintRule() constraintRule {
+	return constraintRule{
+		is: math.MinInt64,
+		ie: math.MaxInt64,
+		fs: math.Inf(-1),
+		fe: math.Inf(1),
+	}
+}
+
 type constraint struct {
-	imin int64
-	imax int64
-	fmin float64
-	fmax float64
+	rules []constraintRule
+}
+
+func newConstraint() constraint {
+	return constraint{rules: []constraintRule{newConstraintRule()}}
+}
+
+func (c *constraint) split() {
+	c.rules = append(c.rules, newConstraintRule())
+}
+
+func (c *constraint) updateIntMin(min int64) {
+	i := len(c.rules) - 1
+	if c.rules[i].is < min {
+		c.rules[i].is = min
+	}
+}
+
+func (c *constraint) updateIntMax(max int64) {
+	i := len(c.rules) - 1
+	if c.rules[i].ie > max {
+		c.rules[i].ie = max
+	}
+}
+
+func (c *constraint) updateFloatMin(min float64) {
+	i := len(c.rules) - 1
+	if c.rules[i].fs < min {
+		c.rules[i].fs = min
+	}
+}
+
+func (c *constraint) updateFloatMax(max float64) {
+	i := len(c.rules) - 1
+	if c.rules[i].fe > max {
+		c.rules[i].fe = max
+	}
 }
 
 type token struct {
@@ -378,12 +428,7 @@ func TestConstraint(t *testing.T) {
 	//	typ = tokText
 	//}
 
-	res := constraint{
-		imin: math.MinInt64,
-		imax: math.MaxInt64,
-		fmin: math.Inf(-1),
-		fmax: math.Inf(1),
-	}
+	res := newConstraint()
 
 	ops := make([]token, 0, 64)
 	vals := make([]token, 0, 64)
@@ -405,16 +450,14 @@ func TestConstraint(t *testing.T) {
 
 			switch rhs.typ {
 			case tokInt:
-				val, err := strconv.ParseInt(rhs.repr(q), 10, 64)
+				val, err := strconv.ParseInt(rhs.repr(q), 0, 64)
 				if err != nil {
 					panic("invalid int")
 				}
 				if rhs.neg {
 					val = -val
 				}
-				if res.imin < val+1 {
-					res.imin = val + 1
-				}
+				res.updateIntMin(val + 1)
 			case tokFloat:
 				val, err := strconv.ParseFloat(rhs.repr(q), 64)
 				if err != nil {
@@ -423,9 +466,7 @@ func TestConstraint(t *testing.T) {
 				if rhs.neg {
 					val = -val
 				}
-				if res.fmin < val+1 {
-					res.fmin = val + 1
-				}
+				res.updateFloatMin(val + 1)
 			default:
 				panic(`'>' is not paired with int or float`)
 			}
@@ -435,16 +476,14 @@ func TestConstraint(t *testing.T) {
 
 			switch rhs.typ {
 			case tokInt:
-				val, err := strconv.ParseInt(rhs.repr(q), 10, 64)
+				val, err := strconv.ParseInt(rhs.repr(q), 0, 64)
 				if err != nil {
 					panic("invalid int")
 				}
 				if rhs.neg {
 					val = -val
 				}
-				if res.imin < val {
-					res.imin = val
-				}
+				res.updateIntMin(val)
 			case tokFloat:
 				val, err := strconv.ParseFloat(rhs.repr(q), 64)
 				if err != nil {
@@ -453,9 +492,7 @@ func TestConstraint(t *testing.T) {
 				if rhs.neg {
 					val = -val
 				}
-				if res.fmin < val {
-					res.fmin = val
-				}
+				res.updateFloatMin(val)
 			default:
 				panic(`'>=' is not paired with int or float`)
 			}
@@ -465,16 +502,14 @@ func TestConstraint(t *testing.T) {
 
 			switch rhs.typ {
 			case tokInt:
-				val, err := strconv.ParseInt(rhs.repr(q), 10, 64)
+				val, err := strconv.ParseInt(rhs.repr(q), 0, 64)
 				if err != nil {
 					panic("invalid int")
 				}
 				if rhs.neg {
 					val = -val
 				}
-				if res.imax > val-1 {
-					res.imax = val - 1
-				}
+				res.updateIntMax(val - 1)
 			case tokFloat:
 				val, err := strconv.ParseFloat(rhs.repr(q), 64)
 				if err != nil {
@@ -483,9 +518,7 @@ func TestConstraint(t *testing.T) {
 				if rhs.neg {
 					val = -val
 				}
-				if res.fmax > val-1 {
-					res.fmax = val - 1
-				}
+				res.updateFloatMax(val - 1)
 			default:
 				panic(`'<' is not paired with int or float`)
 			}
@@ -495,16 +528,14 @@ func TestConstraint(t *testing.T) {
 
 			switch rhs.typ {
 			case tokInt:
-				val, err := strconv.ParseInt(rhs.repr(q), 10, 64)
+				val, err := strconv.ParseInt(rhs.repr(q), 0, 64)
 				if err != nil {
 					panic("invalid int")
 				}
 				if rhs.neg {
 					val = -val
 				}
-				if res.imax > val {
-					res.imax = val
-				}
+				res.updateIntMax(val)
 			case tokFloat:
 				val, err := strconv.ParseFloat(rhs.repr(q), 64)
 				if err != nil {
@@ -513,9 +544,7 @@ func TestConstraint(t *testing.T) {
 				if rhs.neg {
 					val = -val
 				}
-				if res.fmax > val {
-					res.fmax = val
-				}
+				res.updateFloatMax(val)
 			default:
 				panic(`'<=' is not paired with int or float`)
 			}
@@ -527,6 +556,8 @@ func TestConstraint(t *testing.T) {
 			fmt.Println("Hit |!")
 			spew.Dump(ops, vals)
 			fmt.Println()
+
+			res.split()
 		}
 	}
 

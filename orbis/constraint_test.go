@@ -17,8 +17,10 @@ const (
 	tokGTE
 	tokLT
 	tokLTE
+	tokBang
 	tokAND
 	tokOR
+
 	tokPlus
 	tokMinus
 	tokNegate
@@ -35,6 +37,7 @@ var tokStr = [...]string{
 	tokGTE:          ">=",
 	tokLT:           "<",
 	tokLTE:          "<=",
+	tokBang:         "!",
 	tokAND:          "&",
 	tokOR:           "|",
 	tokPlus:         "+",
@@ -58,6 +61,7 @@ var rules = [...]struct {
 	right bool
 }{
 	tokNegate: {prec: 4, right: true},
+	tokBang:   {prec: 4, right: true},
 	tokGT:     {prec: 4, right: true},
 	tokGTE:    {prec: 4, right: true},
 	tokLT:     {prec: 4, right: true},
@@ -130,7 +134,7 @@ type node struct {
 }
 
 func TestConstraint(t *testing.T) {
-	q := `>=100 | "test"`
+	q := `!"test"`
 	val := "test"
 
 	bc := 0   // byte count
@@ -354,6 +358,8 @@ func TestConstraint(t *testing.T) {
 				prev()
 				return token{typ: tokLT, ts: bc - 1, te: bc}
 			}
+		case '!':
+			return token{typ: tokBang, ts: bc - 1, te: bc}
 		case '+':
 			return token{typ: tokPlus, ts: bc - 1, te: bc}
 		case '-':
@@ -375,9 +381,7 @@ func TestConstraint(t *testing.T) {
 	r, _ := utf8.DecodeRuneInString(val)
 
 	switch {
-	case r == '-':
-		fallthrough
-	case isDecimalRune(r):
+	case r == '.' || r == '-' || isDecimalRune(r):
 		if strings.ContainsRune(val, '.') {
 			input.typ = nodeFloat
 			val, err := strconv.ParseFloat(val, 64)
@@ -393,13 +397,6 @@ func TestConstraint(t *testing.T) {
 			}
 			input.int = val
 		}
-	case r == '.':
-		input.typ = nodeFloat
-		val, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			panic(err)
-		}
-		input.float = val
 	default:
 		input.typ = nodeText
 		input.text = val
@@ -438,99 +435,137 @@ func TestConstraint(t *testing.T) {
 			}
 		case tokGT:
 			i := len(vals) - 1
-			switch input.typ {
+			switch vals[i].typ {
 			case nodeInt:
-				switch vals[i].typ {
+				switch input.typ {
 				case nodeInt:
 					vals[i] = node{typ: nodeBool, bool: input.int > vals[i].int}
 				case nodeFloat:
-					vals[i] = node{typ: nodeBool, bool: float64(input.int) > vals[i].float}
+					vals[i] = node{typ: nodeBool, bool: input.float > float64(vals[i].int)}
 				default:
-					panic(`'>' not paired with int or float`)
+					vals[i] = node{typ: nodeBool, bool: false}
 				}
 			case nodeFloat:
-				switch vals[i].typ {
+				switch input.typ {
 				case nodeInt:
-					vals[i] = node{typ: nodeBool, bool: input.float > float64(vals[i].int)}
+					vals[i] = node{typ: nodeBool, bool: float64(input.int) > vals[i].float}
 				case nodeFloat:
 					vals[i] = node{typ: nodeBool, bool: input.float > vals[i].float}
 				default:
-					panic(`'>' not paired with int or float`)
+					vals[i] = node{typ: nodeBool, bool: false}
 				}
 			default:
-				vals[i] = node{typ: nodeBool, bool: false}
+				panic(`'>' not paired with int or float`)
 			}
 		case tokLT:
 			i := len(vals) - 1
-			switch input.typ {
+			switch vals[i].typ {
 			case nodeInt:
-				switch vals[i].typ {
+				switch input.typ {
 				case nodeInt:
 					vals[i] = node{typ: nodeBool, bool: input.int < vals[i].int}
 				case nodeFloat:
-					vals[i] = node{typ: nodeBool, bool: float64(input.int) < vals[i].float}
+					vals[i] = node{typ: nodeBool, bool: input.float < float64(vals[i].int)}
 				default:
-					panic(`'<' not paired with int or float`)
+					vals[i] = node{typ: nodeBool, bool: false}
 				}
 			case nodeFloat:
-				switch vals[i].typ {
+				switch input.typ {
 				case nodeInt:
-					vals[i] = node{typ: nodeBool, bool: input.float < float64(vals[i].int)}
+					vals[i] = node{typ: nodeBool, bool: float64(input.int) < vals[i].float}
 				case nodeFloat:
 					vals[i] = node{typ: nodeBool, bool: input.float < vals[i].float}
 				default:
-					panic(`'<' not paired with int or float`)
+					vals[i] = node{typ: nodeBool, bool: false}
 				}
 			default:
-				vals[i] = node{typ: nodeBool, bool: false}
+				panic(`'<' not paired with int or float`)
 			}
 		case tokGTE:
 			i := len(vals) - 1
-			switch input.typ {
+			switch vals[i].typ {
 			case nodeInt:
-				switch vals[i].typ {
+				switch input.typ {
 				case nodeInt:
 					vals[i] = node{typ: nodeBool, bool: input.int >= vals[i].int}
 				case nodeFloat:
-					vals[i] = node{typ: nodeBool, bool: float64(input.int) >= vals[i].float}
+					vals[i] = node{typ: nodeBool, bool: input.float >= float64(vals[i].int)}
 				default:
-					panic(`'>=' not paired with int or float`)
+					vals[i] = node{typ: nodeBool, bool: false}
 				}
 			case nodeFloat:
-				switch vals[i].typ {
+				switch input.typ {
 				case nodeInt:
-					vals[i] = node{typ: nodeBool, bool: input.float >= float64(vals[i].int)}
+					vals[i] = node{typ: nodeBool, bool: float64(input.int) >= vals[i].float}
 				case nodeFloat:
 					vals[i] = node{typ: nodeBool, bool: input.float >= vals[i].float}
 				default:
-					panic(`'>=' not paired with int or float`)
+					vals[i] = node{typ: nodeBool, bool: false}
 				}
 			default:
-				vals[i] = node{typ: nodeBool, bool: false}
+				panic(`'>=' not paired with int or float`)
 			}
 		case tokLTE:
 			i := len(vals) - 1
-			switch input.typ {
+			switch vals[i].typ {
 			case nodeInt:
-				switch vals[i].typ {
+				switch input.typ {
 				case nodeInt:
 					vals[i] = node{typ: nodeBool, bool: input.int <= vals[i].int}
 				case nodeFloat:
 					vals[i] = node{typ: nodeBool, bool: float64(input.int) <= vals[i].float}
 				default:
-					panic(`'<=' not paired with int or float`)
+					vals[i] = node{typ: nodeBool, bool: false}
 				}
 			case nodeFloat:
-				switch vals[i].typ {
+				switch input.typ {
 				case nodeInt:
 					vals[i] = node{typ: nodeBool, bool: input.float <= float64(vals[i].int)}
 				case nodeFloat:
 					vals[i] = node{typ: nodeBool, bool: input.float <= vals[i].float}
 				default:
-					panic(`'<=' not paired with int or float`)
+					vals[i] = node{typ: nodeBool, bool: false}
 				}
 			default:
-				vals[i] = node{typ: nodeBool, bool: false}
+				panic(`'<=' not paired with int or float`)
+			}
+		case tokBang:
+			i := len(vals) - 1
+			switch vals[i].typ {
+			case nodeText:
+				switch input.typ {
+				case nodeText:
+					vals[i] = node{typ: nodeBool, bool: input.text != vals[i].text}
+				default:
+					vals[i] = node{typ: nodeBool, bool: true}
+				}
+			case nodeBool:
+				switch input.typ {
+				case nodeBool:
+					vals[i] = node{typ: nodeBool, bool: input.bool != vals[i].bool}
+				default:
+					vals[i] = node{typ: nodeBool, bool: !vals[i].bool}
+				}
+			case nodeInt:
+				switch input.typ {
+				case nodeInt:
+					vals[i] = node{typ: nodeBool, bool: input.int != vals[i].int}
+				case nodeFloat:
+					vals[i] = node{typ: nodeBool, bool: input.float != float64(vals[i].int)}
+				default:
+					vals[i] = node{typ: nodeBool, bool: true}
+				}
+			case nodeFloat:
+				switch input.typ {
+				case nodeInt:
+					vals[i] = node{typ: nodeBool, bool: float64(input.int) != vals[i].float}
+				case nodeFloat:
+					vals[i] = node{typ: nodeBool, bool: input.float != vals[i].float}
+				default:
+					vals[i] = node{typ: nodeBool, bool: true}
+				}
+			default:
+				panic(`'!' not paired with int, float, string, or bool`)
 			}
 		case tokAND:
 			l := len(vals) - 2
@@ -568,7 +603,7 @@ func TestConstraint(t *testing.T) {
 			vals = append(vals, node{typ: nodeText, text: current.repr(q)})
 		case tokBracketStart:
 			ops = append(ops, current)
-		case tokGT, tokGTE, tokLT, tokLTE, tokAND, tokOR, tokPlus, tokMinus:
+		case tokGT, tokGTE, tokLT, tokLTE, tokBang, tokAND, tokOR, tokPlus, tokMinus:
 			if current.typ == tokMinus && last.typ != tokInt && last.typ != tokFloat && last.typ != tokText {
 				current.typ = tokNegate
 			}

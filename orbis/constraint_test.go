@@ -3,7 +3,6 @@ package orbis
 import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
-	"math"
 	"strconv"
 	"testing"
 	"unicode/utf8"
@@ -51,83 +50,53 @@ func (t tokType) String() string {
 	return tokStr[t]
 }
 
-type rule struct {
+const eof = rune(0)
+
+var rules = [...]struct {
 	prec  int
 	right bool
-}
-
-var rules = [...]rule{
+}{
 	tokNegate: {prec: 4, right: true},
+	tokGT:     {prec: 4, right: true},
+	tokGTE:    {prec: 4, right: true},
+	tokLT:     {prec: 4, right: true},
+	tokLTE:    {prec: 4, right: true},
 
-	tokGT:  {prec: 3, right: true},
-	tokGTE: {prec: 3, right: true},
-	tokLT:  {prec: 3, right: true},
-	tokLTE: {prec: 3, right: true},
+	tokPlus:  {prec: 3},
+	tokMinus: {prec: 3},
 
-	tokPlus:  {prec: 2},
-	tokMinus: {prec: 2},
-
-	tokAND: {prec: 1},
+	tokAND: {prec: 2},
 	tokOR:  {prec: 1},
 }
 
-const eof = rune(0)
+type ruleType int
 
-type constraintRule struct {
-	is    int64
-	ie    int64
-	fs    float64
-	fe    float64
-	texts []string
-}
+const (
+	ruleIntEQ ruleType = iota
+	ruleFloatEQ
+	ruleTextEQ
+	ruleIntNEQ
+	ruleFloatNEQ
+	ruleTextNEQ
+	ruleIntGT
+	ruleFloatGT
+	ruleIntGTE
+	ruleFloatGTE
+	ruleIntLT
+	ruleFloatLT
+	ruleIntLTE
+	ruleFloatLTE
+)
 
-func newConstraintRule() constraintRule {
-	return constraintRule{
-		is: math.MinInt64,
-		ie: math.MaxInt64,
-		fs: math.Inf(-1),
-		fe: math.Inf(1),
-	}
+type rule struct {
+	typ   ruleType // rule type
+	int   int64    // [min, max]
+	float float64  // [min, max]
+	text  string
 }
 
 type constraint struct {
-	rules []constraintRule
-}
-
-func newConstraint() constraint {
-	return constraint{rules: []constraintRule{newConstraintRule()}}
-}
-
-func (c *constraint) split() {
-	c.rules = append(c.rules, newConstraintRule())
-}
-
-func (c *constraint) updateIntMin(min int64) {
-	i := len(c.rules) - 1
-	if c.rules[i].is < min {
-		c.rules[i].is = min
-	}
-}
-
-func (c *constraint) updateIntMax(max int64) {
-	i := len(c.rules) - 1
-	if c.rules[i].ie > max {
-		c.rules[i].ie = max
-	}
-}
-
-func (c *constraint) updateFloatMin(min float64) {
-	i := len(c.rules) - 1
-	if c.rules[i].fs < min {
-		c.rules[i].fs = min
-	}
-}
-
-func (c *constraint) updateFloatMax(max float64) {
-	i := len(c.rules) - 1
-	if c.rules[i].fe > max {
-		c.rules[i].fe = max
-	}
+	rules [][]rule
 }
 
 type token struct {
@@ -173,7 +142,7 @@ func isHexRune(r rune) bool {
 }
 
 func TestConstraint(t *testing.T) {
-	q := `>=-50 & <= 400 | >=500 & <=600`
+	q := `>=-5 & <=400 | >=500 & <= 600 | 100 | "test"`
 
 	bc := 0   // byte count
 	cc := 0   // char count
@@ -428,136 +397,85 @@ func TestConstraint(t *testing.T) {
 	//	typ = tokText
 	//}
 
-	res := newConstraint()
-
 	ops := make([]token, 0, 64)
-	vals := make([]token, 0, 64)
+	vals := make([]constraint, 0, 64)
 
 	eval := func(op token) {
+		fmt.Printf("EVAL %q\n", op.repr(q))
+
 		switch op.typ {
 		case tokNegate:
-			rhs := vals[len(vals)-1]
-
-			switch rhs.typ {
-			case tokInt, tokFloat:
-				vals[len(vals)-1].neg = !rhs.neg
+			i := len(vals) - 1
+			j := len(vals[i].rules) - 1
+			k := len(vals[i].rules[j]) - 1
+			switch vals[i].rules[j][k].typ {
+			case ruleIntEQ:
+				vals[i].rules[j][k].int *= -1
+			case ruleFloatEQ:
+				vals[i].rules[j][k].float *= -1
 			default:
 				panic(`unary '-' is not paired with int or float`)
 			}
 		case tokGT:
-			rhs := vals[len(vals)-1]
-			vals = vals[:len(vals)-1]
-
-			switch rhs.typ {
-			case tokInt:
-				val, err := strconv.ParseInt(rhs.repr(q), 0, 64)
-				if err != nil {
-					panic("invalid int")
-				}
-				if rhs.neg {
-					val = -val
-				}
-				res.updateIntMin(val + 1)
-			case tokFloat:
-				val, err := strconv.ParseFloat(rhs.repr(q), 64)
-				if err != nil {
-					panic("invalid float")
-				}
-				if rhs.neg {
-					val = -val
-				}
-				res.updateFloatMin(val + 1)
+			i := len(vals) - 1
+			j := len(vals[i].rules) - 1
+			k := len(vals[i].rules[j]) - 1
+			switch vals[i].rules[j][k].typ {
+			case ruleIntEQ:
+				vals[i].rules[j][k].typ = ruleIntGT
+			case ruleFloatEQ:
+				vals[i].rules[j][k].typ = ruleFloatGT
 			default:
-				panic(`'>' is not paired with int or float`)
+				panic(`'>' not paired with int or float`)
 			}
 		case tokGTE:
-			rhs := vals[len(vals)-1]
-			vals = vals[:len(vals)-1]
-
-			switch rhs.typ {
-			case tokInt:
-				val, err := strconv.ParseInt(rhs.repr(q), 0, 64)
-				if err != nil {
-					panic("invalid int")
-				}
-				if rhs.neg {
-					val = -val
-				}
-				res.updateIntMin(val)
-			case tokFloat:
-				val, err := strconv.ParseFloat(rhs.repr(q), 64)
-				if err != nil {
-					panic("invalid float")
-				}
-				if rhs.neg {
-					val = -val
-				}
-				res.updateFloatMin(val)
+			i := len(vals) - 1
+			j := len(vals[i].rules) - 1
+			k := len(vals[i].rules[j]) - 1
+			switch vals[i].rules[j][k].typ {
+			case ruleIntEQ:
+				vals[i].rules[j][k].typ = ruleIntGTE
+			case ruleFloatEQ:
+				vals[i].rules[j][k].typ = ruleFloatGTE
 			default:
-				panic(`'>=' is not paired with int or float`)
+				panic(`'>=' not paired with int or float`)
 			}
 		case tokLT:
-			rhs := vals[len(vals)-1]
-			vals = vals[:len(vals)-1]
-
-			switch rhs.typ {
-			case tokInt:
-				val, err := strconv.ParseInt(rhs.repr(q), 0, 64)
-				if err != nil {
-					panic("invalid int")
-				}
-				if rhs.neg {
-					val = -val
-				}
-				res.updateIntMax(val - 1)
-			case tokFloat:
-				val, err := strconv.ParseFloat(rhs.repr(q), 64)
-				if err != nil {
-					panic("invalid float")
-				}
-				if rhs.neg {
-					val = -val
-				}
-				res.updateFloatMax(val - 1)
+			i := len(vals) - 1
+			j := len(vals[i].rules) - 1
+			k := len(vals[i].rules[j]) - 1
+			switch vals[i].rules[j][k].typ {
+			case ruleIntEQ:
+				vals[i].rules[j][k].typ = ruleIntLT
+			case ruleFloatEQ:
+				vals[i].rules[j][k].typ = ruleFloatLT
 			default:
-				panic(`'<' is not paired with int or float`)
+				panic(`'<' not paired with int or float`)
 			}
 		case tokLTE:
-			rhs := vals[len(vals)-1]
-			vals = vals[:len(vals)-1]
-
-			switch rhs.typ {
-			case tokInt:
-				val, err := strconv.ParseInt(rhs.repr(q), 0, 64)
-				if err != nil {
-					panic("invalid int")
-				}
-				if rhs.neg {
-					val = -val
-				}
-				res.updateIntMax(val)
-			case tokFloat:
-				val, err := strconv.ParseFloat(rhs.repr(q), 64)
-				if err != nil {
-					panic("invalid float")
-				}
-				if rhs.neg {
-					val = -val
-				}
-				res.updateFloatMax(val)
+			i := len(vals) - 1
+			j := len(vals[i].rules) - 1
+			k := len(vals[i].rules[j]) - 1
+			switch vals[i].rules[j][k].typ {
+			case ruleIntEQ:
+				vals[i].rules[j][k].typ = ruleIntLTE
+			case ruleFloatEQ:
+				vals[i].rules[j][k].typ = ruleFloatLTE
 			default:
-				panic(`'<=' is not paired with int or float`)
+				panic(`'<=' not paired with int or float`)
 			}
 		case tokAND:
-			fmt.Println("Hit &!")
-			spew.Dump(ops, vals)
-			fmt.Println()
+			i := len(vals) - 2
+			j := len(vals[i].rules) - 1
+			k := len(vals) - 1
+			l := len(vals[k].rules) - 1
+			vals[i].rules[j] = append(vals[i].rules[j], vals[k].rules[l]...)
+			vals = vals[:k]
 		case tokOR:
-			fmt.Println("Hit |!")
-			spew.Dump(ops, vals)
-			fmt.Println()
-
-			res.split()
+			i := len(vals) - 2
+			j := len(vals) - 1
+			vals[i].rules = append(vals[i].rules, vals[j].rules...)
+			vals = vals[:j]
 		}
 	}
 
@@ -565,11 +483,23 @@ func TestConstraint(t *testing.T) {
 	last := current
 
 	for current.typ != tokEOF {
-		fmt.Printf("%s\n", current.repr(q))
+		fmt.Printf("LEX %s\n", current.repr(q))
 
 		switch current.typ {
-		case tokText, tokInt, tokFloat:
-			vals = append(vals, current)
+		case tokInt:
+			val, err := strconv.ParseInt(current.repr(q), 0, 64)
+			if err != nil {
+				panic(err)
+			}
+			vals = append(vals, constraint{rules: [][]rule{{{typ: ruleIntEQ, int: val}}}})
+		case tokFloat:
+			val, err := strconv.ParseFloat(current.repr(q), 64)
+			if err != nil {
+				panic(err)
+			}
+			vals = append(vals, constraint{rules: [][]rule{{{typ: ruleFloatEQ, float: val}}}})
+		case tokText:
+			vals = append(vals, constraint{rules: [][]rule{{{typ: ruleTextEQ, text: current.repr(q)}}}})
 		case tokBracketStart:
 			ops = append(ops, current)
 		case tokGT, tokGTE, tokLT, tokLTE, tokAND, tokOR, tokPlus, tokMinus:
@@ -594,9 +524,6 @@ func TestConstraint(t *testing.T) {
 			ops = append(ops, current)
 		}
 
-		spew.Dump(ops, vals)
-		fmt.Println()
-
 		last = current
 		current = lex()
 	}
@@ -612,5 +539,5 @@ func TestConstraint(t *testing.T) {
 		eval(op)
 	}
 
-	spew.Dump(res)
+	spew.Dump(vals)
 }

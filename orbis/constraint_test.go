@@ -19,6 +19,9 @@ const (
 	tokLTE
 	tokAND
 	tokOR
+	tokPlus
+	tokMinus
+	tokNegate
 	tokText
 	tokInt
 	tokFloat
@@ -26,13 +29,37 @@ const (
 	tokBracketEnd
 )
 
+var tokStr = [...]string{
+	tokEOF:          "eof",
+	tokGT:           ">",
+	tokGTE:          ">=",
+	tokLT:           "<",
+	tokLTE:          "<=",
+	tokAND:          "&",
+	tokOR:           "|",
+	tokPlus:         "+",
+	tokMinus:        "-",
+	tokNegate:       "-",
+	tokText:         "text",
+	tokInt:          "int",
+	tokFloat:        "float",
+	tokBracketStart: "(",
+	tokBracketEnd:   ")",
+}
+
+func (t tokType) String() string {
+	return tokStr[t]
+}
+
 var precedences = [...]int{
-	tokGT:  1,
-	tokGTE: 1,
-	tokLT:  1,
-	tokLTE: 1,
-	tokAND: 1,
-	tokOR:  1,
+	tokGT:    3,
+	tokGTE:   3,
+	tokLT:    3,
+	tokLTE:   3,
+	tokPlus:  2,
+	tokMinus: 2,
+	tokAND:   1,
+	tokOR:    1,
 }
 
 const eof = rune(0)
@@ -86,7 +113,7 @@ func isHexRune(r rune) bool {
 }
 
 func TestConstraint(t *testing.T) {
-	q := `<=4000`
+	q := `>=1&<=400|>=500&<=600`
 
 	bc := 0   // byte count
 	cc := 0   // char count
@@ -440,10 +467,21 @@ func TestConstraint(t *testing.T) {
 			default:
 				panic(`'<=' is not paired with int or float`)
 			}
+		case tokAND:
+			fmt.Println("Hit &!")
+			spew.Dump(ops, vals)
+			fmt.Println()
+		case tokOR:
+			fmt.Println("Hit |!")
+			spew.Dump(ops, vals)
+			fmt.Println()
 		}
 	}
 
-	for current := lex(); current.typ != tokEOF; current = lex() {
+	current := lex()
+	last := current
+
+	for current.typ != tokEOF {
 		fmt.Printf("%s\n", current.repr(q))
 
 		switch current.typ {
@@ -451,14 +489,18 @@ func TestConstraint(t *testing.T) {
 			vals = append(vals, current)
 		case tokBracketStart:
 			ops = append(ops, current)
-		case tokGT, tokGTE, tokLT, tokLTE:
+		case tokGT, tokGTE, tokLT, tokLTE, tokAND, tokOR, tokPlus, tokMinus:
+			if current.typ == tokMinus && last.typ != tokInt && last.typ != tokFloat && last.typ != tokText {
+				current.typ = tokNegate
+			}
+
 			for len(ops) > 0 {
 				op := ops[len(ops)-1]
 
 				o1 := precedences[current.typ]
 				o2 := precedences[op.typ]
 
-				if op.typ == tokBracketStart || o1 > o2 || o1 == o2 {
+				if op.typ == tokBracketStart || o1 > o2 { // (also check o1 == o2 if op is right-associative)
 					break
 				}
 
@@ -468,6 +510,12 @@ func TestConstraint(t *testing.T) {
 			}
 			ops = append(ops, current)
 		}
+
+		spew.Dump(ops, vals)
+		fmt.Println()
+
+		last = current
+		current = lex()
 	}
 
 	for len(ops) > 0 {
@@ -481,5 +529,5 @@ func TestConstraint(t *testing.T) {
 		eval(op)
 	}
 
-	spew.Dump(ops, vals, res)
+	//spew.Dump(ops, vals, res)
 }

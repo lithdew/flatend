@@ -3,6 +3,7 @@ package orbis
 import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
+	"math"
 	"strconv"
 	"testing"
 	"unicode/utf8"
@@ -85,7 +86,7 @@ func isHexRune(r rune) bool {
 }
 
 func TestConstraint(t *testing.T) {
-	q := `>=123`
+	q := `<=4000`
 
 	bc := 0   // byte count
 	cc := 0   // char count
@@ -320,11 +321,6 @@ func TestConstraint(t *testing.T) {
 		panic(fmt.Sprintf("unknown rune %q", string(r)))
 	}
 
-	var (
-		res constraint
-		//typ tokType
-	)
-
 	//val := "12394"
 	//r, _ := utf8.DecodeRuneInString(val)
 	//
@@ -340,6 +336,8 @@ func TestConstraint(t *testing.T) {
 	//default:
 	//	typ = tokText
 	//}
+
+	res := constraint{imax: math.MaxInt64, fmax: math.MaxFloat64}
 
 	ops := make([]token, 0, 64)
 	vals := make([]token, 0, 64)
@@ -393,6 +391,54 @@ func TestConstraint(t *testing.T) {
 				}
 			default:
 				panic(`'>=' is not paired with int or float`)
+			}
+		case tokLT:
+			rhs := vals[len(vals)-1]
+			vals = vals[:len(vals)-1]
+
+			switch rhs.typ {
+			case tokInt:
+				val, err := strconv.ParseInt(rhs.repr(q), 10, 64)
+				if err != nil {
+					panic("invalid int")
+				}
+				if res.imax > val-1 {
+					res.imax = val - 1
+				}
+			case tokFloat:
+				val, err := strconv.ParseFloat(rhs.repr(q), 64)
+				if err != nil {
+					panic("invalid float")
+				}
+				if res.fmax > val-1 {
+					res.fmax = val - 1
+				}
+			default:
+				panic(`'<' is not paired with int or float`)
+			}
+		case tokLTE:
+			rhs := vals[len(vals)-1]
+			vals = vals[:len(vals)-1]
+
+			switch rhs.typ {
+			case tokInt:
+				val, err := strconv.ParseInt(rhs.repr(q), 10, 64)
+				if err != nil {
+					panic("invalid int")
+				}
+				if res.imax > val {
+					res.imax = val
+				}
+			case tokFloat:
+				val, err := strconv.ParseFloat(rhs.repr(q), 64)
+				if err != nil {
+					panic("invalid float")
+				}
+				if res.fmax > val {
+					res.fmax = val
+				}
+			default:
+				panic(`'<=' is not paired with int or float`)
 			}
 		}
 	}

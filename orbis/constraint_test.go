@@ -51,15 +51,24 @@ func (t tokType) String() string {
 	return tokStr[t]
 }
 
-var precedences = [...]int{
-	tokGT:    3,
-	tokGTE:   3,
-	tokLT:    3,
-	tokLTE:   3,
-	tokPlus:  2,
-	tokMinus: 2,
-	tokAND:   1,
-	tokOR:    1,
+type rule struct {
+	prec  int
+	right bool
+}
+
+var rules = [...]rule{
+	tokNegate: {prec: 5, right: true},
+
+	tokPlus:  {prec: 4},
+	tokMinus: {prec: 4},
+
+	tokGT:  {prec: 3, right: true},
+	tokGTE: {prec: 3, right: true},
+	tokLT:  {prec: 3, right: true},
+	tokLTE: {prec: 3, right: true},
+
+	tokAND: {prec: 1},
+	tokOR:  {prec: 1},
 }
 
 const eof = rune(0)
@@ -75,6 +84,7 @@ type token struct {
 	typ tokType // token type
 	ts  int     // token start index
 	te  int     // token end index
+	neg bool    // is this token negated?
 }
 
 func (t token) repr(q string) string {
@@ -113,7 +123,7 @@ func isHexRune(r rune) bool {
 }
 
 func TestConstraint(t *testing.T) {
-	q := `>=1&<=400|>=500&<=600`
+	q := `>=-50 & <= 400 | >=500 & <=600`
 
 	bc := 0   // byte count
 	cc := 0   // char count
@@ -336,6 +346,10 @@ func TestConstraint(t *testing.T) {
 				prev()
 				return token{typ: tokLT, ts: bc - 1, te: bc}
 			}
+		case '+':
+			return token{typ: tokPlus, ts: bc - 1, te: bc}
+		case '-':
+			return token{typ: tokMinus, ts: bc - 1, te: bc}
 		case '(':
 			return token{typ: tokBracketStart, ts: bc - 1, te: bc}
 		case ')':
@@ -364,13 +378,27 @@ func TestConstraint(t *testing.T) {
 	//	typ = tokText
 	//}
 
-	res := constraint{imax: math.MaxInt64, fmax: math.MaxFloat64}
+	res := constraint{
+		imin: math.MinInt64,
+		imax: math.MaxInt64,
+		fmin: math.Inf(-1),
+		fmax: math.Inf(1),
+	}
 
 	ops := make([]token, 0, 64)
 	vals := make([]token, 0, 64)
 
 	eval := func(op token) {
 		switch op.typ {
+		case tokNegate:
+			rhs := vals[len(vals)-1]
+
+			switch rhs.typ {
+			case tokInt, tokFloat:
+				vals[len(vals)-1].neg = !rhs.neg
+			default:
+				panic(`unary '-' is not paired with int or float`)
+			}
 		case tokGT:
 			rhs := vals[len(vals)-1]
 			vals = vals[:len(vals)-1]
@@ -381,6 +409,9 @@ func TestConstraint(t *testing.T) {
 				if err != nil {
 					panic("invalid int")
 				}
+				if rhs.neg {
+					val = -val
+				}
 				if res.imin < val+1 {
 					res.imin = val + 1
 				}
@@ -388,6 +419,9 @@ func TestConstraint(t *testing.T) {
 				val, err := strconv.ParseFloat(rhs.repr(q), 64)
 				if err != nil {
 					panic("invalid float")
+				}
+				if rhs.neg {
+					val = -val
 				}
 				if res.fmin < val+1 {
 					res.fmin = val + 1
@@ -405,6 +439,9 @@ func TestConstraint(t *testing.T) {
 				if err != nil {
 					panic("invalid int")
 				}
+				if rhs.neg {
+					val = -val
+				}
 				if res.imin < val {
 					res.imin = val
 				}
@@ -412,6 +449,9 @@ func TestConstraint(t *testing.T) {
 				val, err := strconv.ParseFloat(rhs.repr(q), 64)
 				if err != nil {
 					panic("invalid float")
+				}
+				if rhs.neg {
+					val = -val
 				}
 				if res.fmin < val {
 					res.fmin = val
@@ -429,6 +469,9 @@ func TestConstraint(t *testing.T) {
 				if err != nil {
 					panic("invalid int")
 				}
+				if rhs.neg {
+					val = -val
+				}
 				if res.imax > val-1 {
 					res.imax = val - 1
 				}
@@ -436,6 +479,9 @@ func TestConstraint(t *testing.T) {
 				val, err := strconv.ParseFloat(rhs.repr(q), 64)
 				if err != nil {
 					panic("invalid float")
+				}
+				if rhs.neg {
+					val = -val
 				}
 				if res.fmax > val-1 {
 					res.fmax = val - 1
@@ -453,6 +499,9 @@ func TestConstraint(t *testing.T) {
 				if err != nil {
 					panic("invalid int")
 				}
+				if rhs.neg {
+					val = -val
+				}
 				if res.imax > val {
 					res.imax = val
 				}
@@ -460,6 +509,9 @@ func TestConstraint(t *testing.T) {
 				val, err := strconv.ParseFloat(rhs.repr(q), 64)
 				if err != nil {
 					panic("invalid float")
+				}
+				if rhs.neg {
+					val = -val
 				}
 				if res.fmax > val {
 					res.fmax = val
@@ -497,10 +549,10 @@ func TestConstraint(t *testing.T) {
 			for len(ops) > 0 {
 				op := ops[len(ops)-1]
 
-				o1 := precedences[current.typ]
-				o2 := precedences[op.typ]
+				o1 := rules[current.typ]
+				o2 := rules[op.typ]
 
-				if op.typ == tokBracketStart || o1 > o2 { // (also check o1 == o2 if op is right-associative)
+				if op.typ == tokBracketStart || o1.prec > o2.prec || o1.prec == o2.prec && o1.right {
 					break
 				}
 
@@ -529,5 +581,5 @@ func TestConstraint(t *testing.T) {
 		eval(op)
 	}
 
-	//spew.Dump(ops, vals, res)
+	spew.Dump(res)
 }

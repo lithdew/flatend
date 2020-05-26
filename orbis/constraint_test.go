@@ -376,7 +376,7 @@ func TestConstraint(t *testing.T) {
 		panic(fmt.Sprintf("unknown rune %q", string(r)))
 	}
 
-	input := node{typ: nodeBool}
+	input := node{typ: nodeText}
 
 	r, _ := utf8.DecodeRuneInString(val)
 
@@ -414,7 +414,7 @@ func TestConstraint(t *testing.T) {
 		case nodeText:
 			return input.typ == nodeText && input.text == val.text
 		case nodeBool:
-			return (input.typ == nodeBool && input.bool == val.bool) || val.bool
+			return val.bool
 		}
 		panic("should never happen")
 	}
@@ -540,12 +540,7 @@ func TestConstraint(t *testing.T) {
 					vals[i] = node{typ: nodeBool, bool: true}
 				}
 			case nodeBool:
-				switch input.typ {
-				case nodeBool:
-					vals[i] = node{typ: nodeBool, bool: input.bool != vals[i].bool}
-				default:
-					vals[i] = node{typ: nodeBool, bool: !vals[i].bool}
-				}
+				vals[i] = node{typ: nodeBool, bool: !vals[i].bool}
 			case nodeInt:
 				switch input.typ {
 				case nodeInt:

@@ -2,34 +2,51 @@ package orbis
 
 import (
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
+	"strconv"
 	"testing"
 	"unicode/utf8"
 )
 
-type tokenType int
+type tokType int
 
 const (
-	tokenEOF tokenType = iota
-	tokenGT
-	tokenGTE
-	tokenLT
-	tokenLTE
-	tokenAND
-	tokenOR
-	tokenText
-	tokenInt
-	tokenFloat
-	tokenStringStart
-	tokenStringEnd
-	tokenBracketStart
-	tokenBracketEnd
+	tokEOF tokType = iota
+	tokGT
+	tokGTE
+	tokLT
+	tokLTE
+	tokAND
+	tokOR
+	tokText
+	tokInt
+	tokFloat
+	tokBracketStart
+	tokBracketEnd
 )
+
+var precedences = [...]int{
+	tokGT:  1,
+	tokGTE: 1,
+	tokLT:  1,
+	tokLTE: 1,
+	tokAND: 1,
+	tokOR:  1,
+}
 
 const eof = rune(0)
 
+type constraint struct {
+	imin int64
+	imax int64
+	fmin float64
+	fmax float64
+}
+
 type token struct {
-	typ    tokenType
-	ts, te int // token start and end index
+	typ tokType // token type
+	ts  int     // token start index
+	te  int     // token end index
 }
 
 func (t token) repr(q string) string {
@@ -68,7 +85,7 @@ func isHexRune(r rune) bool {
 }
 
 func TestConstraint(t *testing.T) {
-	q := `"\377" | 0.123e4 & "yes"`
+	q := `>=123`
 
 	bc := 0   // byte count
 	cc := 0   // char count
@@ -149,6 +166,9 @@ func TestConstraint(t *testing.T) {
 					digit = true
 					r = next()
 					continue
+				default:
+					prev()
+				case r == eof:
 				}
 				break
 			}
@@ -185,6 +205,7 @@ func TestConstraint(t *testing.T) {
 			}
 
 			r = lower(next())
+			r = lower(next())
 
 			switch prefix {
 			case 'x':
@@ -211,12 +232,12 @@ func TestConstraint(t *testing.T) {
 			}
 
 			r = next()
+			r = next()
 			if r == '+' || r == '-' {
 				r = next()
 			}
 
 			float = true
-			digit = false
 
 			skip(isDecimalRune)
 
@@ -229,37 +250,25 @@ func TestConstraint(t *testing.T) {
 
 		_ = separator
 
-		prev()
-
 		return float
 	}
 
 	lexText := func(quote rune) token {
-		//tokens = append(tokens, token{typ: tokenStringStart, ts: bc - 1, te: bc})
-
-		start, end := bc, -1
+		start := bc
 
 		for {
 			switch next() {
-			default:
-				continue
+			case quote:
+				return token{typ: tokText, ts: start, te: bc - 1}
 			case '\\':
 				lexEscapeChar(quote)
 				continue
-			case quote:
-				end = bc - 1
 			case eof, '\n':
+				panic("unterminated")
+			default:
+				continue
 			}
-			break
 		}
-
-		if end != -1 {
-			if start != end {
-				return token{typ: tokenText, ts: start, te: end}
-			}
-			//tokens = append(tokens, token{typ: tokenStringEnd, ts: bc - 1, te: bc})
-		}
-		panic("unterminated")
 	}
 
 	lex := func() token {
@@ -268,16 +277,16 @@ func TestConstraint(t *testing.T) {
 			r = next()
 		}
 		if r == eof {
-			return token{typ: tokenEOF, ts: bc - 1, te: bc}
+			return token{typ: tokEOF, ts: bc - 1, te: bc}
 		}
 
 		if isDecimalRune(r) || r == '.' {
 			s := bc - 1
 
 			if lexNumber(r) {
-				return token{typ: tokenFloat, ts: s, te: bc}
+				return token{typ: tokFloat, ts: s, te: bc}
 			}
-			return token{typ: tokenInt, ts: s, te: bc}
+			return token{typ: tokInt, ts: s, te: bc}
 		}
 
 		switch r {
@@ -286,32 +295,145 @@ func TestConstraint(t *testing.T) {
 		case '>':
 			r = next()
 			if r == '=' {
-				return token{typ: tokenGTE, ts: bc - 2, te: bc}
+				return token{typ: tokGTE, ts: bc - 2, te: bc}
 			} else {
 				prev()
-				return token{typ: tokenGT, ts: bc - 1, te: bc}
+				return token{typ: tokGT, ts: bc - 1, te: bc}
 			}
 		case '<':
 			r = next()
 			if r == '=' {
-				return token{typ: tokenLTE, ts: bc - 2, te: bc}
+				return token{typ: tokLTE, ts: bc - 2, te: bc}
 			} else {
 				prev()
-				return token{typ: tokenLT, ts: bc - 1, te: bc}
+				return token{typ: tokLT, ts: bc - 1, te: bc}
 			}
 		case '(':
-			return token{typ: tokenBracketStart, ts: bc - 1, te: bc}
+			return token{typ: tokBracketStart, ts: bc - 1, te: bc}
 		case ')':
-			return token{typ: tokenBracketEnd, ts: bc - 1, te: bc}
+			return token{typ: tokBracketEnd, ts: bc - 1, te: bc}
 		case '&':
-			return token{typ: tokenAND, ts: bc - 1, te: bc}
+			return token{typ: tokAND, ts: bc - 1, te: bc}
 		case '|':
-			return token{typ: tokenOR, ts: bc - 1, te: bc}
+			return token{typ: tokOR, ts: bc - 1, te: bc}
 		}
 		panic(fmt.Sprintf("unknown rune %q", string(r)))
 	}
 
-	for tok := lex(); tok.typ != tokenEOF; tok = lex() {
-		fmt.Printf("%s\n", tok.repr(q))
+	var (
+		res constraint
+		//typ tokType
+	)
+
+	//val := "12394"
+	//r, _ := utf8.DecodeRuneInString(val)
+	//
+	//switch {
+	//case isDecimalRune(r):
+	//	if strings.ContainsRune(val, '.') {
+	//		typ = tokFloat
+	//	} else {
+	//		typ = tokInt
+	//	}
+	//case r == '.':
+	//	typ = tokFloat
+	//default:
+	//	typ = tokText
+	//}
+
+	ops := make([]token, 0, 64)
+	vals := make([]token, 0, 64)
+
+	eval := func(op token) {
+		switch op.typ {
+		case tokGT:
+			rhs := vals[len(vals)-1]
+			vals = vals[:len(vals)-1]
+
+			switch rhs.typ {
+			case tokInt:
+				val, err := strconv.ParseInt(rhs.repr(q), 10, 64)
+				if err != nil {
+					panic("invalid int")
+				}
+				if res.imin < val+1 {
+					res.imin = val + 1
+				}
+			case tokFloat:
+				val, err := strconv.ParseFloat(rhs.repr(q), 64)
+				if err != nil {
+					panic("invalid float")
+				}
+				if res.fmin < val+1 {
+					res.fmin = val + 1
+				}
+			default:
+				panic(`'>' is not paired with int or float`)
+			}
+		case tokGTE:
+			rhs := vals[len(vals)-1]
+			vals = vals[:len(vals)-1]
+
+			switch rhs.typ {
+			case tokInt:
+				val, err := strconv.ParseInt(rhs.repr(q), 10, 64)
+				if err != nil {
+					panic("invalid int")
+				}
+				if res.imin < val {
+					res.imin = val
+				}
+			case tokFloat:
+				val, err := strconv.ParseFloat(rhs.repr(q), 64)
+				if err != nil {
+					panic("invalid float")
+				}
+				if res.fmin < val {
+					res.fmin = val
+				}
+			default:
+				panic(`'>=' is not paired with int or float`)
+			}
+		}
 	}
+
+	for current := lex(); current.typ != tokEOF; current = lex() {
+		fmt.Printf("%s\n", current.repr(q))
+
+		switch current.typ {
+		case tokText, tokInt, tokFloat:
+			vals = append(vals, current)
+		case tokBracketStart:
+			ops = append(ops, current)
+		case tokGT, tokGTE, tokLT, tokLTE:
+			for len(ops) > 0 {
+				op := ops[len(ops)-1]
+
+				o1 := precedences[current.typ]
+				o2 := precedences[op.typ]
+
+				if op.typ == tokBracketStart || o1 > o2 || o1 == o2 {
+					break
+				}
+
+				ops = ops[:len(ops)-1]
+
+				eval(op)
+			}
+			ops = append(ops, current)
+		}
+	}
+
+	for len(ops) > 0 {
+		op := ops[len(ops)-1]
+		ops = ops[:len(ops)-1]
+
+		if op.typ == tokBracketStart {
+			panic("mismatched parenthesis")
+		}
+
+		eval(op)
+	}
+
+	spew.Dump(ops, vals, res)
 }

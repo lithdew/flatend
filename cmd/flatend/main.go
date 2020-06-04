@@ -3,87 +3,101 @@ package main
 import (
 	"github.com/gdamore/tcell"
 	"github.com/gdamore/tcell/encoding"
+	"github.com/lithdew/blanc/layout"
+	"log"
+	"time"
 )
+
+var err error
+
+var screen tcell.Screen
+var screenRect layout.Rect
 
 func check(err error) {
 	if err != nil {
-		panic(err)
+		if screen != nil {
+			screen.Fini()
+		}
+		log.Panic(err)
 	}
 }
 
-var focused int
-var widgets []widget
+func init() {
+	encoding.Register()
 
-func currentFocus() widget {
-	if focused == len(widgets) {
-		return nil
-	}
-	return widgets[focused]
+	initScreen()
+	initHeader()
+	initBody()
+	initFooter()
 }
+
+func initScreen() {
+	screen, err = tcell.NewScreen()
+	check(err)
+}
+
+func resizeScreen() {
+	screen.Sync()
+
+	w, h := screen.Size()
+	screenRect = screenRect.Width(w)
+	screenRect = screenRect.Height(h)
+
+	resizeHeader()
+	resizeBody()
+	resizeFooter()
+}
+
+func renderScreen() {
+	renderHeader()
+	renderBody()
+	renderFooter()
+
+	screen.Show()
+}
+
+var ch chan struct{}
 
 func eventLoop() {
 	defer close(ch)
-
-	input := &textbox{h: 2, tpx: 1, tpy: 1, fw: true, ba: alignBottom, bs: styleWhite}
-	widgets = append(widgets, input)
-
 	for {
-		for _, w := range widgets {
-			w.render(s)
-		}
-
-		text(s, 1, 1, styleWhite, "flatend ::")
-
-		s.Show()
-
-		switch e := s.PollEvent().(type) {
-		case *tcell.EventResize:
-			s.Clear()
-			s.Sync()
+		e := screen.PollEvent()
+		switch e := e.(type) {
 		case *tcell.EventKey:
 			switch e.Key() {
-			case tcell.KeyTAB:
-				focused = (focused + 1) % (len(widgets) + 1)
-			case tcell.KeyEscape, tcell.KeyExit, tcell.KeyCtrlC:
+			case tcell.KeyCtrlC:
 				return
 			case tcell.KeyCtrlL:
-				s.Clear()
-				s.Sync()
-			default:
-				w := currentFocus()
-				if w != nil {
-					w.keyPress(e)
-				}
+				resizeScreen()
 			}
+		case *tcell.EventResize:
+			resizeScreen()
+		}
+
+		if footerInput.HandleEvent(e) {
+			//if footerInput.Text() == "http" {
+			//	fmt.Println("ready")
+			//}
 		}
 	}
 }
 
-var (
-	styleDefault = tcell.StyleDefault.Foreground(tcell.ColorBlack)
-	styleWhite   = tcell.StyleDefault.Foreground(tcell.ColorWhite)
-)
-
-var (
-	s   tcell.Screen
-	err error
-	ch  chan struct{}
-)
-
 func main() {
-	encoding.Register()
+	check(screen.Init())
+	defer screen.Fini()
 
-	s, err = tcell.NewScreen()
-	check(err)
-
-	check(s.Init())
-	defer s.Fini()
-
-	s.SetStyle(styleDefault)
-	s.EnableMouse()
-	s.Clear()
+	resizeScreen()
 
 	ch = make(chan struct{})
 	go eventLoop()
-	<-ch
+
+	for {
+		select {
+		case <-ch:
+			return
+		case <-time.After(40 * time.Millisecond):
+		}
+
+		renderScreen()
+	}
 }

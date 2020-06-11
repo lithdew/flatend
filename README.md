@@ -30,13 +30,9 @@ func handleGetTodos(ctx *flatend.Context) []byte {
 }
 
 func main() {
-	service := &flatend.Service{
-		Addr: "127.0.0.1:9000",
-		Services: map[string]flatend.Handler{
-			"all_todos": handleAllTodos,
-			"get_todos": handleGetTodos,
-		},
-	}
+	service := &flatend.Service{Addr: "127.0.0.1:9000"}
+	service.Register("all_todos", handleAllTodos)
+	service.Register("get_todos", handleGetTodos)
 	check(service.Start())
 }
 ```

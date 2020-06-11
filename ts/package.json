@@ -1,0 +1,14 @@
+{
+  "name": "flatend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/lithdew/flatend",
+  "author": "Kenta Iwasaki <kenta@lithdew.net>",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "blake2b": "^2.1.3",
+    "ip": "^1.1.5",
+    "tweetnacl": "^1.0.3"
+  }
+}

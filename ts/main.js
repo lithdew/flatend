@@ -354,7 +354,7 @@ class Client {
                 const packet = RequestPacket.decode(frame);
                 const body = JSON.parse(packet.data.toString("utf8"));
 
-                console.log(body);
+                // console.log(body);
 
                 this.reply(seq, packet.data);
             } else {

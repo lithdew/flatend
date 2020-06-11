@@ -17,6 +17,13 @@ type Service struct {
 	Services   map[string]Handler
 }
 
+func (s *Service) Register(service string, handler Handler) {
+	if s.Services == nil {
+		s.Services = make(map[string]Handler, 1)
+	}
+	s.Services[service] = handler
+}
+
 func (s Service) Start() error {
 	addr := s.Addr
 	if addr == "" {

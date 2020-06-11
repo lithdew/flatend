@@ -170,8 +170,11 @@ class HandshakePacket {
 
         const services = [...Array(size)].map(() => {
             const size = buf.readUInt8();
-            const service = buf.slice(1, 1 + size);
-            buf = buf.slice(1 + size);
+            buf = buf.slice(1);
+
+            const service = buf.slice(0, size);
+            buf = buf.slice(size);
+
             return service.toString("utf8");
         });
 

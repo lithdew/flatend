@@ -229,20 +229,53 @@ const readExactly = (sock, n, timeout = 3000) => new Promise((resolve, reject) =
 class Client {
     /**
      *
+     * @param {Node} node
      * @param {net.Socket} conn
      * @param {Buffer} secret
      */
-    constructor(conn, secret) {
+    constructor(node, opts, conn, secret) {
         this.readNonce = 0n;
         this.writeNonce = 0n;
 
         this.pending = new EventEmitter();
         this.counter = 0;
 
+        this.node = node;
+        this.opts = opts;
         this.conn = conn;
         this.secret = secret;
 
         this.conn.on('readable', this._read.bind(this));
+        this.conn.on('close', () => {
+            this.node.clients.delete(this.opts);
+
+            const reconnect = async () => {
+                console.log(`Trying to reconnect to ${ip.toString(this.id.host, 12, 4)}:${this.id.port}. Sleeping for 1s.`);
+
+                try {
+                    await this.node.dial(this.opts);
+                } catch (err) {
+                    setTimeout(reconnect, 1000);
+                }
+            };
+
+            setTimeout(reconnect, 1000);
+        });
+    }
+
+    async handshake() {
+        const packet = new HandshakePacket(
+            {
+                id: this.node.id,
+                services: ["get_todos"]
+            },
+        ).sign(this.node.secretKey);
+
+        const res = await this.request(Buffer.concat([Buffer.of(OPCODE_HANDSHAKE), packet.encode()]));
+        const info = HandshakePacket.decode(res);
+
+        this.id = info.id;
+        this.services = info.services;
     }
 
     async request(req, timeout = 3000) {
@@ -409,7 +442,12 @@ class Node {
         }
 
         const conn = new net.Socket();
-        conn.connect(opts);
+
+        await new Promise((resolve, reject) => {
+            conn.once('error', err => reject(err));
+            conn.once('connect', resolve);
+            conn.connect(opts);
+        });
 
         const {publicKey, secretKey} = nacl.box.keyPair();
         conn.write(publicKey);
@@ -420,8 +458,12 @@ class Node {
         sessionKey = blake2b(32).update(sessionKey).digest();
         sessionKey = Buffer.from(sessionKey);
 
-        const client = new Client(conn, sessionKey);
+        const client = new Client(this, opts, conn, sessionKey);
+        await client.handshake();
+
         this.clients.set(opts, client);
+
+        console.log(`Successfully connected to ${ip.toString(client.id.host, 12, 4)}:${this.id.port}.`);
 
         return client;
     }
@@ -431,20 +473,7 @@ async function main() {
     const node = new Node({host: "127.0.0.1"});
     await node.listen();
 
-    console.log(`Node ID:`, node.id);
-
-    const client = await node.dial({port: 9000, host: "127.0.0.1"});
-
-    console.log(`Session Key: ${client.secret.toString("hex")}`);
-
-    let packet = new HandshakePacket({id: node.id, services: ["get_todos"]}).sign(node.secretKey);
-    packet = HandshakePacket.decode(await client.request(Buffer.concat([Buffer.of(OPCODE_HANDSHAKE), packet.encode()])));
-
-    console.log(packet);
-
-    // for (let i = 0; i < 100; i++) {
-    //     client.send(`[${i}] Hello from NodeJS!`);
-    // }
+    await node.dial({port: 9000, host: "127.0.0.1"});
 }
 
 main().catch(err => console.error(err));

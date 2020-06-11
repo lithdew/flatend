@@ -444,8 +444,9 @@ class Node {
         const conn = new net.Socket();
 
         await new Promise((resolve, reject) => {
-            conn.once('error', err => reject(err));
             conn.once('connect', resolve);
+            conn.once('error', err => reject(err));
+
             conn.connect(opts);
         });
 

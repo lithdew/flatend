@@ -1,0 +1,22 @@
+[[http]]
+addr = ":3000"
+redirect_trailing_slash = true
+redirect_fixed_path = true
+
+[http.timeout]
+read = "10s"
+read_header = "10s"
+idle = "10s"
+write = "10s"
+
+[http.max]
+header_size = 1048576
+body_size = 1048576
+
+[[http.routes]]
+path = "GET /todos"
+service = "get_todos"
+
+[[http.routes]]
+path = "POST /todos"
+service = "create_todo"

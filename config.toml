@@ -15,6 +15,10 @@ body_size = 1048576
 
 [[http.routes]]
 path = "GET /todos"
+service = "all_todos"
+
+[[http.routes]]
+path = "GET /todos/:id"
 service = "get_todos"
 
 [[http.routes]]

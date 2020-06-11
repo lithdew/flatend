@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/flatend"
 	"github.com/lithdew/kademlia"
@@ -17,6 +17,15 @@ import (
 	"strings"
 	"time"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+type Request struct {
+	Header http.Header       `json:"header"`
+	Query  url.Values        `json:"query"`
+	Params map[string]string `json:"params"`
+	Body   []byte            `json:"body"`
+}
 
 type Config struct {
 	HTTP []ConfigHTTP
@@ -206,7 +215,18 @@ func main() {
 					body = nil
 				}
 
-				buf, err := json.Marshal(flatend.Message{Header: r.Header, Body: body})
+				req := Request{
+					Header: r.Header,
+					Query:  r.URL.Query(),
+					Body:   body,
+				}
+
+				req.Params = make(map[string]string, len(params))
+				for _, param := range params {
+					req.Params[param.Key] = param.Value
+				}
+
+				buf, err := json.Marshal(req)
 				if err != nil {
 					return
 				}

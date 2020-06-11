@@ -2,16 +2,9 @@ package main
 
 import (
 	"github.com/lithdew/flatend"
-	"github.com/lithdew/kademlia"
-	"log"
-	"net"
-	"os"
-	"os/signal"
+	"strconv"
+	"sync/atomic"
 )
-
-func main() {
-	Register("127.0.0.1:9000")
-}
 
 func check(err error) {
 	if err != nil {
@@ -19,44 +12,23 @@ func check(err error) {
 	}
 }
 
-func Register(hub string) {
-	_, priv, err := kademlia.GenerateKeys(nil)
-	check(err)
+var counter uint64 = 0
 
-	addr := "127.0.0.1:12000"
+func handleAllTodos(_ *flatend.Context) []byte {
+	return strconv.AppendUint(nil, atomic.AddUint64(&counter, 1), 10)
+}
 
-	node, err := flatend.NewNode(priv, addr)
-	check(err)
+func handleGetTodos(ctx *flatend.Context) []byte {
+	return ctx.Body()
+}
 
-	//counter := uint64(0)
-	//
-	//node.Handle(func(service string, buf []byte) []byte {
-	//	return strconv.AppendUint(nil, atomic.AddUint64(&counter, 1), 10)
-	//})
-
-	handleGetTodos := func(ctx *flatend.Context) []byte {
-		return ctx.Body()
+func main() {
+	service := &flatend.Service{
+		Addr: "127.0.0.1:9000",
+		Services: map[string]flatend.Handler{
+			"all_todos": handleAllTodos,
+			"get_todos": handleGetTodos,
+		},
 	}
-
-	node.Register("get_todos", handleGetTodos)
-
-	ln, err := net.Listen("tcp", addr)
-	check(err)
-
-	go func() {
-		check(node.Serve(ln))
-	}()
-
-	defer func() {
-		node.Shutdown()
-		check(ln.Close())
-	}()
-
-	check(node.Dial(hub))
-
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-	<-ch
-
-	log.Println("Done.")
+	check(service.Start())
 }

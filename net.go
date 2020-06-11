@@ -9,7 +9,6 @@ import (
 	"io"
 	"math"
 	"net"
-	"net/http"
 	"strconv"
 	"sync"
 	"unicode/utf8"
@@ -195,11 +194,6 @@ func UnmarshalRequestPacket(buf []byte) (RequestPacket, error) {
 
 	pkt.Data = buf[:length]
 	return pkt, nil
-}
-
-type Message struct {
-	Header http.Header `json:"header"`
-	Body   []byte      `json:"body"`
 }
 
 func Addr(host net.IP, port uint16) string {

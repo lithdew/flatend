@@ -8,6 +8,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/jpillora/backoff v1.0.0
+	github.com/json-iterator/go v1.1.10
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lithdew/bytesutil v0.0.0-20200409052507-d98389230a59
 	github.com/lithdew/kademlia v0.0.0-20200607181215-ff07ba2ac940

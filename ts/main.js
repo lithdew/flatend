@@ -346,7 +346,9 @@ class Client {
             const seq = frame.readUInt32BE();
             frame = frame.slice(4);
 
-            if (seq === 0 || this.pending.listeners(`${seq}`).length === 0) {
+            const listeners = this.pending.listeners(`${seq}`);
+
+            if (seq === 0 || listeners.length === 0) {
                 const opcode = frame.readUInt8();
                 frame = frame.slice(1);
 
@@ -361,7 +363,7 @@ class Client {
 
                 this.reply(seq, packet.data);
             } else {
-                this.pending.emit(`${seq}`, frame);
+                listeners.forEach(listener => listener(frame));
             }
         }
     }

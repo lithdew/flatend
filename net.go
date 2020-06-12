@@ -49,6 +49,11 @@ const (
 	OpcodeRequest
 )
 
+type PayloadPacket struct {
+	Headers map[string]string
+	Body    []byte
+}
+
 type HandshakePacket struct {
 	ID        kademlia.ID
 	Services  []string
@@ -136,6 +141,39 @@ func (h HandshakePacket) Validate(dst []byte) error {
 	}
 
 	return nil
+}
+
+type ResponsePacket []byte
+
+func (r ResponsePacket) AppendTo(dst []byte) []byte {
+	if r == nil {
+		dst = append(dst, 0)
+	} else {
+		dst = append(dst, 1)
+		dst = bytesutil.AppendUint32BE(dst, uint32(len(r)))
+		dst = append(dst, r...)
+	}
+	return dst
+}
+
+func UnmarshalResponsePacket(buf []byte) (ResponsePacket, error) {
+	if len(buf) < 1 || (buf[0] != 0 && buf[0] != 1) {
+		return nil, io.ErrUnexpectedEOF
+	}
+	handled := buf[0] == 1
+	buf = buf[1:]
+	if !handled {
+		return nil, nil
+	}
+	if len(buf) < 4 {
+		return nil, io.ErrUnexpectedEOF
+	}
+	size := bytesutil.Uint32BE(buf[:4])
+	buf = buf[4:]
+	if uint32(len(buf)) < size {
+		return nil, io.ErrUnexpectedEOF
+	}
+	return buf, nil
 }
 
 type RequestPacket struct {

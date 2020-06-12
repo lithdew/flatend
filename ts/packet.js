@@ -16,6 +16,31 @@ class ID {
 
     /**
      *
+     * @return {Buffer}
+     */
+    encode() {
+        let host;
+        if (typeof this.host === "string") {
+            if (ip.isV4Format(this.host)) {
+                host = Buffer.concat([Buffer.of(0), ip.toBuffer(this.host)]);
+            } else if (ip.isV6Format(this.host)) {
+                host = Buffer.concat([Buffer.of(1), ip.toBuffer(this.host)]);
+            } else {
+                host = Buffer.of(2);
+            }
+        } else if (Buffer.isBuffer(this.host)) {
+            const type = this.host.byteLength === 4 ? 0 : this.host.byteLength === 16 ? 1 : 2;
+            host = Buffer.concat([Buffer.of(type), this.host]);
+        }
+
+        const port = Buffer.alloc(2);
+        port.writeUInt16BE(this.port);
+
+        return Buffer.concat([this.publicKey, host, port]);
+    }
+
+    /**
+     *
      * @param {Buffer} buf
      * @return {[ID, Buffer]}
      */
@@ -45,31 +70,6 @@ class ID {
         buf = buf.slice(2)
 
         return [new ID({publicKey, host, port}), buf];
-    }
-
-    /**
-     *
-     * @return {Buffer}
-     */
-    encode() {
-        let host;
-        if (typeof this.host === "string") {
-            if (ip.isV4Format(this.host)) {
-                host = Buffer.concat([Buffer.of(0), ip.toBuffer(this.host)]);
-            } else if (ip.isV6Format(this.host)) {
-                host = Buffer.concat([Buffer.of(1), ip.toBuffer(this.host)]);
-            } else {
-                host = Buffer.of(2);
-            }
-        } else if (Buffer.isBuffer(this.host)) {
-            const type = this.host.byteLength === 4 ? 0 : this.host.byteLength === 16 ? 1 : 2;
-            host = Buffer.concat([Buffer.of(type), this.host]);
-        }
-
-        const port = Buffer.alloc(2);
-        port.writeUInt16BE(this.port);
-
-        return Buffer.concat([this.publicKey, host, port]);
     }
 }
 
@@ -108,6 +108,11 @@ class HandshakePacket {
         ]);
     }
 
+    /**
+     *
+     * @param {Buffer} buf
+     * @return {HandshakePacket}
+     */
     static decode(buf) {
         let decoded = ID.decode(buf);
 
@@ -165,6 +170,11 @@ class RequestPacket {
         return Buffer.concat([services, data, this.data])
     }
 
+    /**
+     *
+     * @param {Buffer} buf
+     * @return {RequestPacket}
+     */
     static decode(buf) {
         let size = buf.readUInt8();
         buf = buf.slice(1);
@@ -188,4 +198,38 @@ class RequestPacket {
     }
 }
 
-export {ID, HandshakePacket, RequestPacket};
+class ResponsePacket {
+    constructor(
+        data = null
+    ) {
+        this.data = data;
+    }
+
+    encode() {
+        if (this.data) {
+            const header = Buffer.alloc(5);
+            header.writeUInt8(1);
+            header.writeUInt32BE(this.data.byteLength, 1);
+            return Buffer.concat([header, this.data]);
+        }
+        return Buffer.of(0);
+    }
+
+    /**
+     *
+     * @param {Buffer} buf
+     */
+    static decode(buf) {
+        const handled = buf.readUInt8() === 1;
+        buf = buf.slice(1);
+
+        if (!handled) return new ResponsePacket();
+
+        const size = buf.readUInt32BE();
+        buf = buf.slice(4);
+
+        return new ResponsePacket(buf.slice(0, size));
+    }
+}
+
+export {ID, HandshakePacket, RequestPacket, ResponsePacket};

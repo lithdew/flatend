@@ -22,6 +22,10 @@ github.com/lithdew/monte v0.0.0-20200611093340-15ff088304c9 h1:XmfrU1ZyBDuiZ2/UU
 github.com/lithdew/monte v0.0.0-20200611093340-15ff088304c9/go.mod h1:qisbxmkjwkE+XOLjCiJe+z1U4f95XxF5Hfrk21Rb1yc=
 github.com/lithdew/monte v0.0.0-20200612062106-02975bf1abd2 h1:m1MUK1qrH7bJyKiY5x4n02kxrwZuNt+6z2UNUniD1FA=
 github.com/lithdew/monte v0.0.0-20200612062106-02975bf1abd2/go.mod h1:qisbxmkjwkE+XOLjCiJe+z1U4f95XxF5Hfrk21Rb1yc=
+github.com/lithdew/monte v0.0.0-20200612162118-d9ef724a278f h1:ePrvQ/QMnHVDjWfan0twg6lD1WYy03Un8kxH7dAl86k=
+github.com/lithdew/monte v0.0.0-20200612162118-d9ef724a278f/go.mod h1:qisbxmkjwkE+XOLjCiJe+z1U4f95XxF5Hfrk21Rb1yc=
+github.com/lithdew/monte v0.0.0-20200612163155-688f7a476468 h1:uVJAVZL+BulMCLaRtjVwp4jH2d6IIls+QjkIZdddCvY=
+github.com/lithdew/monte v0.0.0-20200612163155-688f7a476468/go.mod h1:qisbxmkjwkE+XOLjCiJe+z1U4f95XxF5Hfrk21Rb1yc=
 github.com/lithdew/reliable v0.0.0-20200506103725-7df64908b057 h1:CBhKVPym/7ZzY7ascOG93XSTlJuqrmIU/Hd0UDHC1TA=
 github.com/lithdew/reliable v0.0.0-20200506103725-7df64908b057/go.mod h1:b9iSDHZ4DaCGpwhQdKsH0u61UancBXJMe0r8SCPKEEA=
 github.com/lithdew/seq v0.0.0-20200504083424-74d5d8117a05 h1:j1UtG8NYCupA5xUwQ/vrTf/zjuNlZ0D1n7UtM8LhS58=

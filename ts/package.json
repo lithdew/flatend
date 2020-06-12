@@ -9,6 +9,7 @@
   "dependencies": {
     "blake2b": "^2.1.3",
     "ip": "^1.1.5",
+    "readable-stream": "^3.6.0",
     "tweetnacl": "^1.0.3"
   }
 }

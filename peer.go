@@ -57,11 +57,7 @@ func (p *Peer) HandleMessage(ctx *monte.Context) error {
 		if handler == nil {
 			continue
 		}
-		res := handler(ftx)
-		if res != nil {
-			return ctx.Reply(res)
-		}
-		return nil
+		return ctx.Reply(ResponsePacket(handler(ftx)).AppendTo(nil))
 	}
 
 	return nil

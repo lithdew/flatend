@@ -1,18 +1,18 @@
 import nacl from "tweetnacl";
 import {EventEmitter} from "events";
 import MonteSocket from "./monte.js";
-import {HandshakePacket, ID, RequestPacket} from "./packet.js";
+import {HandshakePacket, ID, RequestPacket, ResponsePacket} from "./packet.js";
 import ip from "ip";
 
 const OPCODE_HANDSHAKE = 0;
 const OPCODE_REQUEST = 1;
 
 
-class FlatendClient {
+class Flatend {
     /**
      *
-     * @param {ID} id
-     * @param {nacl.SignKeyPair} keys
+     * @param {ID} [id]
+     * @param {nacl.SignKeyPair} [keys]
      */
     constructor({id, keys}) {
         this.listeners = new EventEmitter();
@@ -30,7 +30,18 @@ class FlatendClient {
             throw new Error(`Service '${service}' is already registered.`)
 
         this.listeners.on(service, ({seq, data}) => {
-            this.conn.reply(seq, handler(data));
+            let res;
+            try {
+                res = handler(data);
+            } catch (err) {
+                res = {error: err.toString()}
+            }
+
+            if (!Buffer.isBuffer(res) && typeof res !== "string") {
+                res = JSON.stringify(res);
+            }
+
+            this.conn.reply(seq, new ResponsePacket(Buffer.from(res)).encode());
         });
     }
 
@@ -41,6 +52,22 @@ class FlatendClient {
 
         this.conn.on('data', this._data.bind(this));
         this.conn.on('error', console.error);
+
+        this.conn.on('close', () => {
+            const reconnect = async () => {
+                console.log(`Trying to reconnect to ${ip.toString(this.id.host, 12, 4)}:${this.id.port}. Sleeping for 1s.`);
+
+                try {
+                    await this.start({port: 9000, host: "127.0.0.1"});
+
+                    console.log(`Successfully connected to ${ip.toString(this.id.host, 12, 4)}:${this.id.port}.`);
+                } catch (err) {
+                    setTimeout(reconnect, 1000);
+                }
+            };
+
+            setTimeout(reconnect, 1000);
+        });
     }
 
     _data({seq, frame}) {
@@ -53,7 +80,7 @@ class FlatendClient {
 
                 const service = packet.services.find(service => this.listeners.listenerCount(service) > 0);
                 if (!service) {
-                    // reply with an error
+                    this.conn.reply(seq, new ResponsePacket().encode());
                     return;
                 }
 
@@ -97,28 +124,23 @@ async function main() {
     const keys = nacl.sign.keyPair();
     const id = new ID({publicKey: keys.publicKey, host: "127.0.0.1", port: 12000});
 
-    const client = new FlatendClient({id, keys});
-    client.register("get_todos", data => data);
+    const backend = new Flatend({id, keys});
 
-    await client.start({port: 9000, host: "127.0.0.1"});
+    backend.register("get_todos", data => {
+        data = JSON.parse(data);
 
-    client.conn.on('close', () => {
-        const reconnect = async () => {
-            console.log(`Trying to reconnect to ${ip.toString(client.id.host, 12, 4)}:${client.id.port}. Sleeping for 1s.`);
+        if (parseInt(data?.params?.id) !== 123)
+            throw new Error(`ID must be 123. Got ${data?.params?.id}.`);
 
-            try {
-                await client.start({port: 9000, host: "127.0.0.1"});
+        return data;
+    });
 
-                console.log(`Successfully connected to ${ip.toString(client.id.host, 12, 4)}:${client.id.port}.`);
-            } catch (err) {
-                setTimeout(reconnect, 1000);
-            }
-        };
+    backend.register("all_todos", data => "hello world!")
 
-        setTimeout(reconnect, 1000);
-    })
+    await backend.start({port: 9000, host: "127.0.0.1"});
 
-    console.log(`Successfully connected to ${ip.toString(client.id.host, 12, 4)}:${client.id.port}.`);
+
+    console.log(`Successfully connected to ${ip.toString(backend.id.host, 12, 4)}:${backend.id.port}.`);
 }
 
 main().catch(err => console.error(err));

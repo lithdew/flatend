@@ -1,9 +1,11 @@
-import {Duplex} from "stream";
+import stream from "readable-stream";
 import {EventEmitter} from "events";
 import net from "net";
 import nacl from "tweetnacl";
 import blake2b from "blake2b";
 import crypto from "crypto";
+
+const {Duplex} = stream;
 
 /**
  *
@@ -52,6 +54,8 @@ class MonteSocket extends Duplex {
 
         this.pending = new EventEmitter();
         this.counter = 0;
+
+        this._paused = false;
 
         this.conn.on('close', had_error => this.emit('close', had_error));
         this.conn.on('connect', () => this.emit('connect'));
@@ -185,12 +189,13 @@ class MonteSocket extends Duplex {
         this.conn.write(Buffer.concat([header, chunk]), callback);
     }
 
-    _read(_size) {
+    _read() {
+        this._paused = false;
         setImmediate(this._readable.bind(this));
     }
 
     _readable() {
-        while (true) {
+        while (!this._paused) {
             const header = this.conn.read(4);
             if (!header) return;
 
@@ -198,6 +203,7 @@ class MonteSocket extends Duplex {
 
             let frame = this.conn.read(length);
             if (!frame) {
+                console.log(`Trying to read ${length} byte(s), only ${this.conn.readableLength} byte(s) available.`)
                 this.conn.unshift(header);
                 return;
             }
@@ -213,7 +219,9 @@ class MonteSocket extends Duplex {
 
             if (seq === 0 || this.pending.listenerCount(`${seq}`) === 0) {
                 try {
-                    this.push({seq, frame});
+                    if (!this.push({seq, frame})) {
+                        this._paused = true;
+                    }
                 } catch (err) {
                     this.emit("error", err);
                 }
@@ -221,6 +229,10 @@ class MonteSocket extends Duplex {
                 this.pending.emit(`${seq}`, frame);
             }
         }
+    }
+
+    _final(cb) {
+        this.conn.end(cb);
     }
 }
 

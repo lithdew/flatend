@@ -122,7 +122,13 @@ func (n *Node) Process(services []string, data []byte) ([]byte, error) {
 	for _, provider := range providers {
 		dst, err = provider.conn.Request(dst[:0], req)
 		if err == nil {
+			dst, err = UnmarshalResponsePacket(dst)
+		}
+		if err == nil && dst != nil {
 			return dst, nil
+		}
+		if err != nil {
+			fmt.Println(err)
 		}
 	}
 

@@ -102,6 +102,22 @@ async function main() {
 
     await client.start({port: 9000, host: "127.0.0.1"});
 
+    client.conn.on('close', () => {
+        const reconnect = async () => {
+            console.log(`Trying to reconnect to ${ip.toString(client.id.host, 12, 4)}:${client.id.port}. Sleeping for 1s.`);
+
+            try {
+                await client.start({port: 9000, host: "127.0.0.1"});
+
+                console.log(`Successfully connected to ${ip.toString(client.id.host, 12, 4)}:${client.id.port}.`);
+            } catch (err) {
+                setTimeout(reconnect, 1000);
+            }
+        };
+
+        setTimeout(reconnect, 1000);
+    })
+
     console.log(`Successfully connected to ${ip.toString(client.id.host, 12, 4)}:${client.id.port}.`);
 }
 

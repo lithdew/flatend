@@ -35,6 +35,8 @@ github.com/lithdew/monte v0.0.0-20200613030909-f5e1611bfa09 h1:bYiP8Cnf0SU5QHYLf
 github.com/lithdew/monte v0.0.0-20200613030909-f5e1611bfa09/go.mod h1:qisbxmkjwkE+XOLjCiJe+z1U4f95XxF5Hfrk21Rb1yc=
 github.com/lithdew/monte v0.0.0-20200613034704-f6d482652dc3 h1:HzVVwsj110ohL9hkXlg0akWmbZLWKnjApiEy0oZao20=
 github.com/lithdew/monte v0.0.0-20200613034704-f6d482652dc3/go.mod h1:qisbxmkjwkE+XOLjCiJe+z1U4f95XxF5Hfrk21Rb1yc=
+github.com/lithdew/monte v0.0.0-20200613174427-105bad77ff52 h1:zYygDC3AydtQfkizBiglK6DEyRoZoTlZ/InYLaFUPFk=
+github.com/lithdew/monte v0.0.0-20200613174427-105bad77ff52/go.mod h1:qisbxmkjwkE+XOLjCiJe+z1U4f95XxF5Hfrk21Rb1yc=
 github.com/lithdew/reliable v0.0.0-20200506103725-7df64908b057 h1:CBhKVPym/7ZzY7ascOG93XSTlJuqrmIU/Hd0UDHC1TA=
 github.com/lithdew/reliable v0.0.0-20200506103725-7df64908b057/go.mod h1:b9iSDHZ4DaCGpwhQdKsH0u61UancBXJMe0r8SCPKEEA=
 github.com/lithdew/seq v0.0.0-20200504083424-74d5d8117a05 h1:j1UtG8NYCupA5xUwQ/vrTf/zjuNlZ0D1n7UtM8LhS58=

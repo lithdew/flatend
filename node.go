@@ -3,116 +3,303 @@ package flatend
 import (
 	"errors"
 	"fmt"
+	"github.com/jpillora/backoff"
 	"github.com/lithdew/kademlia"
 	"github.com/lithdew/monte"
+	"math"
 	"net"
-	"strconv"
 	"sync"
+	"time"
 )
 
 var _ monte.Handler = (*Node)(nil)
 var _ monte.ConnStateHandler = (*Node)(nil)
 
 type Node struct {
-	id  kademlia.ID
-	sec kademlia.PrivateKey
+	PublicAddr string
+	SecretKey  kademlia.PrivateKey
 
-	addr string
+	BindAddrs []BindFunc
+	Services  map[string]Handler
 
-	srv *monte.Server
+	start sync.Once
+	stop  sync.Once
 
-	mu sync.Mutex
+	wg sync.WaitGroup
+	id *kademlia.ID
 
 	providers *Providers
-	peers     map[string]*Peer
-	handlers  map[string]Handler
+
+	clientsLock sync.Mutex
+	clients     map[string]*monte.Client
+
+	lns []net.Listener
+	srv *monte.Server
 }
 
-func NewNode(sec kademlia.PrivateKey, addr string) (*Node, error) {
-	node := &Node{
-		sec: sec,
-		srv: &monte.Server{},
-
-		handlers:  make(map[string]Handler),
-		providers: NewProviders(),
-		peers:     make(map[string]*Peer),
-	}
-
-	h, p, err := net.SplitHostPort(addr)
+func GenerateSecretKey() kademlia.PrivateKey {
+	_, secret, err := kademlia.GenerateKeys(nil)
 	if err != nil {
-		return nil, fmt.Errorf("invalid addr: %w", err)
+		panic(err)
+	}
+	return secret
+}
+
+func (n *Node) Start(addrs ...string) error {
+	if n.PublicAddr != "" && n.SecretKey == kademlia.ZeroPrivateKey {
+		return errors.New("secret key must be provided if microservice has a public address to advertise")
 	}
 
-	node.addr = addr
+	var (
+		bindHost net.IP
+		bindPort uint16
+	)
 
-	port, err := strconv.ParseUint(p, 10, 16)
-	if err != nil {
-		return nil, fmt.Errorf("invalid port: %w", err)
+	if n.PublicAddr != "" {
+		addr, err := net.ResolveTCPAddr("tcp", n.PublicAddr)
+		if err != nil {
+			return err
+		}
+
+		bindHost = addr.IP
+		if bindHost == nil {
+			return fmt.Errorf("'%s' is an invalid host: it must be an IPv4 or IPv6 address", addr.IP)
+		}
+
+		if addr.Port <= 0 || addr.Port >= math.MaxUint16 {
+			return fmt.Errorf("'%d' is an invalid port", addr.Port)
+		}
+
+		bindPort = uint16(addr.Port)
 	}
 
-	node.id = kademlia.ID{
-		Pub:  sec.Public(),
-		Host: net.ParseIP(h),
-		Port: uint16(port),
+	start := false
+	n.start.Do(func() { start = true })
+	if !start {
+		return errors.New("listener already started")
 	}
 
-	node.srv.Handler = node
-	node.srv.ConnState = node
-
-	return node, nil
-}
-
-func (n *Node) Register(service string, handler Handler) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	n.handlers[service] = handler
-}
-
-func (n *Node) Deregister(service string) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	delete(n.handlers, service)
-}
-
-func (n *Node) Services() []string {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	services := make([]string, 0, len(n.handlers))
-	for service := range n.handlers {
-		services = append(services, service)
+	if n.PublicAddr != "" {
+		n.id = &kademlia.ID{
+			Pub:  n.SecretKey.Public(),
+			Host: bindHost,
+			Port: bindPort,
+		}
 	}
-	return services
+
+	n.providers = NewProviders()
+	n.clients = make(map[string]*monte.Client)
+
+	n.srv = &monte.Server{
+		Handler:   n,
+		ConnState: n,
+	}
+
+	for _, fn := range n.BindAddrs {
+		ln, err := fn()
+		if err != nil {
+			for _, ln := range n.lns {
+				ln.Close()
+			}
+			return err
+		}
+
+		n.wg.Add(1)
+		go func() {
+			defer n.wg.Done()
+			n.srv.Serve(ln)
+		}()
+
+		n.lns = append(n.lns, ln)
+	}
+
+	for _, addr := range addrs {
+		err := n.Probe(addr)
+		if err != nil {
+			return fmt.Errorf("failed to probe '%s': %w", addr, err)
+		}
+	}
+
+	return nil
 }
 
-func (n *Node) getHandler(service string) Handler {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	return n.handlers[service]
+func (n *Node) Shutdown() {
+	once := false
+	n.start.Do(func() { once = true })
+	if once {
+		return
+	}
+
+	stop := false
+	n.stop.Do(func() { stop = true })
+	if !stop {
+		return
+	}
+
+	n.srv.Shutdown()
+	for _, ln := range n.lns {
+		ln.Close()
+	}
+	n.wg.Wait()
 }
 
-func (n *Node) Dial(addr string) error {
-	n.mu.Lock()
-	peer, exists := n.peers[addr]
+func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
+	if state != monte.StateClosed {
+		return
+	}
+
+	provider := n.providers.deregister(conn)
+	if provider == nil {
+		return
+	}
+
+	addr := provider.Addr()
+
+	fmt.Printf("%s has disconnected from you. Services: %s\n", addr, provider.Services())
+
+	n.clientsLock.Lock()
+	_, exists := n.clients[addr]
+	n.clientsLock.Unlock()
+
 	if !exists {
-		peer = newPeer(n, addr)
-		n.peers[addr] = peer
-		go peer.Dial()
+		return
 	}
-	n.mu.Unlock()
 
-	<-peer.ready
-	return peer.err
+	go func() {
+		b := &backoff.Backoff{
+			Factor: 1.25,
+			Jitter: true,
+			Min:    500 * time.Millisecond,
+			Max:    1 * time.Second,
+		}
+
+		for {
+			err := n.Probe(addr)
+			if err == nil {
+				break
+			}
+
+			duration := b.Duration()
+
+			fmt.Printf("Trying to reconnect to %s. Sleeping for %s.\n", addr, duration)
+			time.Sleep(duration)
+		}
+	}()
 }
 
-func (n *Node) Process(services []string, data []byte) ([]byte, error) {
+func (n *Node) HandleMessage(ctx *monte.Context) error {
+	var opcode uint8
+
+	body := ctx.Body()
+	if len(body) < 1 {
+		return errors.New("no opcode recorded in packet")
+	}
+	opcode, body = body[0], body[1:]
+
+	switch opcode {
+	case OpcodeHandshake:
+		packet, err := UnmarshalHandshakePacket(body)
+		if err != nil {
+			return err
+		}
+
+		err = packet.Validate(body[:0])
+		if err != nil {
+			return err
+		}
+
+		// register the microservice if it hasn't been registered before
+
+		provider := n.providers.register(ctx.Conn(), packet.ID, packet.Services)
+		fmt.Printf("%s has connected to you. Services: %s\n", provider.Addr(), provider.Services())
+
+		// always reply back with what services we provide, and our
+		// id if we want to publicly advertise our microservice
+
+		return ctx.Reply(n.createHandshakePacket(body[:0]).AppendTo(body[:0]))
+	case OpcodeRequest:
+		packet, err := UnmarshalRequestPacket(body)
+		if err != nil {
+			return err
+		}
+
+		ftx := acquireContext(ctx.Conn(), packet.Data)
+		defer releaseContext(ftx)
+
+		for _, service := range packet.Services {
+			handler, exists := n.Services[service]
+			if !exists {
+				continue
+			}
+
+			return ctx.Reply(ResponsePacket(handler(ftx)).AppendTo(body[:0]))
+		}
+
+		return ctx.Reply(ResponsePacket(nil).AppendTo(body[:0]))
+	}
+
+	return fmt.Errorf("unknown opcode %d", opcode)
+}
+
+func (n *Node) Probe(addr string) error {
+	resolved, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	n.clientsLock.Lock()
+	client, exists := n.clients[resolved.String()]
+	if !exists {
+		client = &monte.Client{
+			Addr:      resolved.String(),
+			Handler:   n,
+			ConnState: n,
+		}
+		n.clients[resolved.String()] = client
+	}
+	n.clientsLock.Unlock()
+
+	conn, err := client.Get()
+	if err != nil {
+		return err
+	}
+	req := n.createHandshakePacket(nil).AppendTo([]byte{OpcodeHandshake})
+	res, err := conn.Request(req[:0], req)
+	if err != nil {
+		return err
+	}
+	packet, err := UnmarshalHandshakePacket(res)
+	if err != nil {
+		return err
+	}
+	err = packet.Validate(req[:0])
+	if err != nil {
+		return err
+	}
+
+	addr = "???"
+	if packet.ID != nil {
+		addr = Addr(packet.ID.Host, packet.ID.Port)
+		if !packet.ID.Host.Equal(resolved.IP) || packet.ID.Port != uint16(resolved.Port) {
+			return fmt.Errorf("dialed '%s' which advertised '%s'", resolved, addr)
+		}
+		n.providers.register(conn, packet.ID, packet.Services)
+	}
+
+	fmt.Printf("You are now connected to %s. Services: %s\n", addr, packet.Services)
+
+	return nil
+}
+
+func (n *Node) Request(services []string, data []byte) ([]byte, error) {
 	providers := n.providers.getProviders(services...)
 
-	pkt := RequestPacket{
+	packet := RequestPacket{
 		Services: services,
 		Data:     data,
 	}
 
-	req := pkt.AppendTo([]byte{OpcodeRequest})
+	req := packet.AppendTo([]byte{OpcodeRequest})
 
 	var (
 		dst []byte
@@ -127,79 +314,27 @@ func (n *Node) Process(services []string, data []byte) ([]byte, error) {
 		if err == nil && dst != nil {
 			return dst, nil
 		}
-		if err != nil {
-			fmt.Println(err)
-		}
 	}
 
 	return nil, fmt.Errorf("no nodes were able to process your request for service(s): %s", services)
 }
 
-func (n *Node) HandleMessage(ctx *monte.Context) error {
-	body := ctx.Body()
-	if len(body) < 1 {
-		return errors.New("no opcode recorded in packet")
+func (n *Node) createHandshakePacket(buf []byte) HandshakePacket {
+	packet := HandshakePacket{Services: n.getServiceNames()}
+	if n.id != nil {
+		packet.ID = n.id
+		packet.Signature = n.SecretKey.Sign(packet.AppendPayloadTo(buf))
 	}
-	opcode := body[0]
-	body = body[1:]
-
-	switch opcode {
-	case OpcodeHandshake:
-		return n.handleHandshakePacket(ctx, body)
-	default:
-		return fmt.Errorf("unknown opcode %d", opcode)
-	}
+	return packet
 }
 
-func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
-	if state != monte.StateClosed {
-		return
+func (n *Node) getServiceNames() []string {
+	if n.Services == nil {
+		return nil
 	}
-	provider := n.providers.deregister(conn)
-	if provider == nil {
-		return
+	services := make([]string, 0, len(n.Services))
+	for service := range n.Services {
+		services = append(services, service)
 	}
-	fmt.Printf("%s has disconnected from you. Services: %s\n", provider.Addr(), provider.Services())
-}
-
-func (n *Node) deletePeer(addr string) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	delete(n.peers, addr)
-}
-
-func (n *Node) handleHandshakePacket(ctx *monte.Context, body []byte) error {
-	pkt, err := UnmarshalHandshakePacket(body)
-	if err != nil {
-		return err
-	}
-	err = pkt.Validate(nil)
-	if err != nil {
-		return err
-	}
-
-	provider := n.providers.register(ctx.Conn(), pkt.ID, pkt.Services)
-	fmt.Printf("%s has connected to you. Services: %s\n", provider.Addr(), provider.Services())
-
-	pkt = HandshakePacket{
-		ID:       &n.id,
-		Services: n.Services(),
-	}
-	pkt.Signature = n.sec.Sign(pkt.AppendPayloadTo(body[:0]))
-
-	return ctx.Reply(pkt.AppendTo(body[:0]))
-}
-
-func (n *Node) Serve(ln net.Listener) error { return n.srv.Serve(ln) }
-
-func (n *Node) Shutdown() {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	n.srv.Shutdown()
-
-	for addr, peer := range n.peers {
-		peer.client.Shutdown()
-		delete(n.peers, addr)
-	}
+	return services
 }

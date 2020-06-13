@@ -7,7 +7,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/flatend"
-	"github.com/lithdew/kademlia"
 	"github.com/spf13/pflag"
 	"io/ioutil"
 	"net"
@@ -167,7 +166,7 @@ func main() {
 	var bindPort uint16
 
 	pflag.StringVarP(&configPath, "config", "c", "config.toml", "path to config file")
-	pflag.IPVarP(&bindHost, "host", "h", net.IPv4(127, 0, 0, 1), "bind host")
+	pflag.IPVarP(&bindHost, "host", "h", net.ParseIP("0.0.0.0"), "bind host")
 	pflag.Uint16VarP(&bindPort, "port", "p", 9000, "bind port")
 	pflag.Parse()
 
@@ -178,27 +177,20 @@ func main() {
 	check(toml.Unmarshal(buf, &cfg))
 	check(cfg.Validate())
 
-	_, priv, err := kademlia.GenerateKeys(nil)
-	check(err)
-
 	addr := flatend.Addr(bindHost, bindPort)
 
-	node, err := flatend.NewNode(priv, addr)
-	check(err)
+	node := &flatend.Node{
+		PublicAddr: addr,
+		SecretKey:  flatend.GenerateSecretKey(),
+		BindAddrs: []flatend.BindFunc{
+			flatend.BindTCP(addr),
+		},
+	}
+	check(node.Start())
 
-	ln, err := net.Listen("tcp", addr)
-	check(err)
+	fmt.Printf("Listening for microservices on %s.\n", addr)
 
-	fmt.Printf("Listening for microservices on %s.\n", ln.Addr())
-
-	go func() {
-		check(node.Serve(ln))
-	}()
-
-	defer func() {
-		node.Shutdown()
-		check(ln.Close())
-	}()
+	defer node.Shutdown()
 
 	for _, cfg := range cfg.HTTP {
 		router := httprouter.New()
@@ -255,7 +247,7 @@ func main() {
 					return
 				}
 
-				res, err := node.Process(services, buf)
+				res, err := node.Request(services, buf)
 				if err != nil {
 					w.Write([]byte(err.Error()))
 					return

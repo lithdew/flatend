@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/lithdew/flatend"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync/atomic"
 )
@@ -23,8 +25,17 @@ func handleGetTodos(ctx *flatend.Context) []byte {
 }
 
 func main() {
-	service := &flatend.Service{Addr: "127.0.0.1:9000"}
-	service.Register("all_todos", handleAllTodos)
-	service.Register("get_todos", handleGetTodos)
-	check(service.Start())
+	node := &flatend.Node{
+		Services: map[string]flatend.Handler{
+			"all_todos": handleAllTodos,
+			"get_todos": handleGetTodos,
+		},
+	}
+	check(node.Start("0.0.0.0:9000"))
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	<-ch
+
+	node.Shutdown()
 }

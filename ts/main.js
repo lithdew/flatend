@@ -41,7 +41,7 @@ class Flatend {
                 res = JSON.stringify(res);
             }
 
-            this.conn.reply(seq, new ResponsePacket(Buffer.from(res)).encode());
+            this.conn.reply(seq, new ResponsePacket(res && Buffer.from(res)).encode());
         });
     }
 
@@ -137,7 +137,7 @@ async function main() {
         return data;
     });
 
-    backend.register("all_todos", data => "hello world!")
+    backend.register("all_todos", data => {})
 
     await backend.start({port: 9000, host: "127.0.0.1"});
 

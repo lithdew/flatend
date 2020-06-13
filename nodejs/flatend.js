@@ -53,7 +53,7 @@ class Flatend {
         this.conn.on('data', this._data.bind(this));
         this.conn.on('error', console.error);
 
-        this.conn.once('close', () => {
+        this.conn.once('end', () => {
             const reconnect = async () => {
                 console.log(`Trying to reconnect to ${ip.toString(this.id.host, 12, 4)}:${this.id.port}. Sleeping for 1s.`);
 

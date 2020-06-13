@@ -58,7 +58,7 @@ class MonteSocket extends Duplex {
         this._paused = false;
         this._state = 0;
 
-        this.conn.on('close', had_error => this.emit('close', had_error));
+        this.conn.on('close', hadErr => this.emit('close', hadErr));
         this.conn.on('connect', () => this.emit('connect'));
         this.conn.on('drain', () => this.emit('drain'));
         this.conn.on('end', () => this.emit('end'));

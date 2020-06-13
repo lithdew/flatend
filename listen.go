@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"github.com/lithdew/kademlia"
 	"github.com/lithdew/monte"
+	"math"
 	"net"
-	"strconv"
 	"sync"
 )
 
 type BindFunc func() (net.Listener, error)
+
+func BindAny() BindFunc {
+	return func() (net.Listener, error) { return net.Listen("tcp", ":0") }
+}
 
 func BindTCP(addr string) BindFunc {
 	return func() (net.Listener, error) { return net.Listen("tcp", addr) }
@@ -24,10 +28,6 @@ func BindTCPv6(addr string) BindFunc {
 	return func() (net.Listener, error) { return net.Listen("tcp6", addr) }
 }
 
-func BindUnix(addr string) BindFunc {
-	return func() (net.Listener, error) { return net.Listen("unix", addr) }
-}
-
 var _ monte.Handler = (*Listener)(nil)
 var _ monte.ConnStateHandler = (*Listener)(nil)
 
@@ -38,9 +38,15 @@ type Listener struct {
 	SecretKey kademlia.PrivateKey
 	Services  map[string]Handler
 
-	once sync.Once
-	id   *kademlia.ID
-	srv  *monte.Server
+	start sync.Once
+	stop  sync.Once
+
+	wg sync.WaitGroup
+	id *kademlia.ID
+
+	lns       []net.Listener
+	srv       *monte.Server
+	providers *Providers
 }
 
 func GenerateSecretKey() kademlia.PrivateKey {
@@ -62,27 +68,26 @@ func (l *Listener) Start() error {
 	)
 
 	if l.PublicAddr != "" {
-		host, port, err := net.SplitHostPort(l.PublicAddr)
+		addr, err := net.ResolveTCPAddr("tcp", l.PublicAddr)
 		if err != nil {
 			return err
 		}
 
-		bindHost = net.ParseIP(host)
+		bindHost = addr.IP
 		if bindHost == nil {
-			return fmt.Errorf("'%s' is an invalid host: it must be an IPv4 or IPv6 address", host)
+			return fmt.Errorf("'%s' is an invalid host: it must be an IPv4 or IPv6 address", addr.IP)
 		}
 
-		decodedPort, err := strconv.ParseUint(port, 10, 16)
-		if err != nil {
-			return fmt.Errorf("'%s' is an invalid port: %w", port, err)
+		if addr.Port <= 0 || addr.Port >= math.MaxUint16 {
+			return fmt.Errorf("'%d' is an invalid port", addr.Port)
 		}
 
-		bindPort = uint16(decodedPort)
+		bindPort = uint16(addr.Port)
 	}
 
 	once := false
 
-	l.once.Do(func() { once = true })
+	l.start.Do(func() { once = true })
 
 	if !once {
 		return errors.New("listener already started")
@@ -95,6 +100,8 @@ func (l *Listener) Start() error {
 			Port: bindPort,
 		}
 	}
+
+	l.providers = NewProviders()
 
 	l.srv = &monte.Server{
 		Handler:            l,
@@ -111,11 +118,50 @@ func (l *Listener) Start() error {
 		SeqDelta:           0,
 	}
 
+	for _, fn := range l.BindAddrs {
+		ln, err := fn()
+		if err != nil {
+			for _, ln := range l.lns {
+				ln.Close()
+			}
+			return err
+		}
+
+		l.wg.Add(1)
+		go func() {
+			defer l.wg.Done()
+			l.srv.Serve(ln)
+		}()
+
+		l.lns = append(l.lns, ln)
+	}
+
 	return nil
 }
 
+func (l *Listener) Shutdown() {
+	l.stop.Do(func() {
+		l.srv.Shutdown()
+		for _, ln := range l.lns {
+			ln.Close()
+		}
+		l.wg.Wait()
+	})
+}
+
 func (l *Listener) HandleConnState(conn *monte.Conn, state monte.ConnState) {
-	panic("implement me")
+	if state != monte.StateClosed {
+		return
+	}
+
+	provider := l.providers.deregister(conn)
+	if provider == nil {
+		return
+	}
+
+	// FIXME(kenta): we can maybe try reconnect to the provider here? maybe? idk
+
+	fmt.Printf("%s has disconnected from you. Services: %s\n", provider.Addr(), provider.Services())
 }
 
 func (l *Listener) HandleMessage(ctx *monte.Context) error {
@@ -138,8 +184,53 @@ func (l *Listener) HandleMessage(ctx *monte.Context) error {
 		if err != nil {
 			return err
 		}
+
+		// register the microservice if it hasn't been registered before
+
+		provider := l.providers.register(ctx.Conn(), packet.ID, packet.Services)
+		fmt.Printf("%s has connected to you. Services: %s\n", provider.Addr(), provider.Services())
+
+		// always reply back with what services we provide, and our
+		// id if we want to publicly advertise our microservice
+
+		packet = HandshakePacket{Services: l.getServiceNames()}
+		if l.id != nil {
+			packet.ID = l.id
+			packet.Signature = l.SecretKey.Sign(packet.AppendPayloadTo(body[:0]))
+		}
+
+		return ctx.Reply(packet.AppendTo(body[:0]))
 	case OpcodeRequest:
+		packet, err := UnmarshalRequestPacket(body)
+		if err != nil {
+			return err
+		}
+
+		ftx := acquireContext(ctx.Conn(), packet.Data)
+		defer releaseContext(ftx)
+
+		for _, service := range packet.Services {
+			handler, exists := l.Services[service]
+			if !exists {
+				continue
+			}
+
+			return ctx.Reply(ResponsePacket(handler(ftx)).AppendTo(body[:0]))
+		}
+
+		return ctx.Reply(ResponsePacket(nil).AppendTo(body[:0]))
 	}
 
 	return fmt.Errorf("unknown opcode %d", opcode)
+}
+
+func (l *Listener) getServiceNames() []string {
+	if l.Services == nil {
+		return nil
+	}
+	services := make([]string, 0, len(l.Services))
+	for service := range l.Services {
+		services = append(services, service)
+	}
+	return services
 }

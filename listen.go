@@ -44,9 +44,10 @@ type Listener struct {
 	wg sync.WaitGroup
 	id *kademlia.ID
 
-	lns       []net.Listener
-	srv       *monte.Server
 	providers *Providers
+
+	lns []net.Listener
+	srv *monte.Server
 }
 
 func GenerateSecretKey() kademlia.PrivateKey {
@@ -86,9 +87,7 @@ func (l *Listener) Start() error {
 	}
 
 	once := false
-
 	l.start.Do(func() { once = true })
-
 	if !once {
 		return errors.New("listener already started")
 	}
@@ -104,18 +103,8 @@ func (l *Listener) Start() error {
 	l.providers = NewProviders()
 
 	l.srv = &monte.Server{
-		Handler:            l,
-		ConnState:          nil,
-		Handshaker:         nil,
-		HandshakeTimeout:   0,
-		MaxConns:           0,
-		MaxConnWaitTimeout: 0,
-		ReadBufferSize:     0,
-		WriteBufferSize:    0,
-		ReadTimeout:        0,
-		WriteTimeout:       0,
-		SeqOffset:          0,
-		SeqDelta:           0,
+		Handler:   l,
+		ConnState: l,
 	}
 
 	for _, fn := range l.BindAddrs {
@@ -140,13 +129,23 @@ func (l *Listener) Start() error {
 }
 
 func (l *Listener) Shutdown() {
-	l.stop.Do(func() {
-		l.srv.Shutdown()
-		for _, ln := range l.lns {
-			ln.Close()
-		}
-		l.wg.Wait()
-	})
+	once := false
+	l.start.Do(func() { once = true })
+	if once {
+		return
+	}
+
+	stop := false
+	l.stop.Do(func() { stop = true })
+	if !stop {
+		return
+	}
+
+	l.srv.Shutdown()
+	for _, ln := range l.lns {
+		ln.Close()
+	}
+	l.wg.Wait()
 }
 
 func (l *Listener) HandleConnState(conn *monte.Conn, state monte.ConnState) {
@@ -158,8 +157,6 @@ func (l *Listener) HandleConnState(conn *monte.Conn, state monte.ConnState) {
 	if provider == nil {
 		return
 	}
-
-	// FIXME(kenta): we can maybe try reconnect to the provider here? maybe? idk
 
 	fmt.Printf("%s has disconnected from you. Services: %s\n", provider.Addr(), provider.Services())
 }

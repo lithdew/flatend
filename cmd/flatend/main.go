@@ -17,15 +17,16 @@ import (
 	"os/signal"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Request struct {
-	Header http.Header       `json:"header"`
-	Query  url.Values        `json:"query"`
-	Params map[string]string `json:"params"`
-	Body   []byte            `json:"body"`
+	Header http.Header         `json:"header"`
+	Query  url.Values          `json:"query"`
+	Params map[string]string   `json:"params"`
+	Body   jsoniter.RawMessage `json:"body"`
 }
 
 type Config struct {
@@ -219,6 +220,16 @@ func main() {
 			}
 
 			handler := func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+				req := Request{
+					Header: r.Header,
+					Query:  r.URL.Query(),
+				}
+
+				req.Params = make(map[string]string, len(params))
+				for _, param := range params {
+					req.Params[param.Key] = param.Value
+				}
+
 				body, err := ioutil.ReadAll(r.Body)
 				if err != nil {
 					return
@@ -227,15 +238,16 @@ func main() {
 					body = nil
 				}
 
-				req := Request{
-					Header: r.Header,
-					Query:  r.URL.Query(),
-					Body:   body,
-				}
-
-				req.Params = make(map[string]string, len(params))
-				for _, param := range params {
-					req.Params[param.Key] = param.Value
+				if utf8.Valid(body) {
+					req.Body, err = json.Marshal(string(body))
+					if err != nil {
+						return
+					}
+				} else {
+					req.Body, err = json.Marshal(body)
+					if err != nil {
+						return
+					}
 				}
 
 				buf, err := json.Marshal(req)

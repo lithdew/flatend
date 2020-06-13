@@ -9,13 +9,15 @@ const OPCODE_REQUEST = 1;
 class Flatend {
     /**
      *
-     * @param {ID} [id]
-     * @param {nacl.SignKeyPair} [keys]
+     * @param {{id: ID, keys: nacl.SignKeyPair} | null} [opts]
      */
-    constructor({id, keys}) {
+    constructor(opts) {
         this.listeners = new EventEmitter();
-        this.self = id;
-        this.keys = keys;
+
+        if (opts?.id && opts?.keys) {
+            this.self = opts.id;
+            this.keys = opts.keys;
+        }
     }
 
     /**
@@ -93,9 +95,8 @@ class Flatend {
     }
 
     async handshake() {
-        let packet = new HandshakePacket(
-            {id: this.self, services: [...this.listeners.eventNames()]}
-        ).sign(this.keys.secretKey);
+        let packet = new HandshakePacket({id: this.self, services: [...this.listeners.eventNames()]});
+        if (this.self) packet = packet.sign(this.keys.secretKey);
 
         packet = HandshakePacket.decode(await this.request(OPCODE_HANDSHAKE, packet.encode()));
 

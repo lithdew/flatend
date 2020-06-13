@@ -7,12 +7,18 @@ import (
 )
 
 type Provider struct {
-	id       kademlia.ID
+	id       *kademlia.ID
 	conn     *monte.Conn
 	services map[string]struct{}
 }
 
-func (p *Provider) Addr() string { return Addr(p.id.Host, p.id.Port) }
+func (p *Provider) Addr() string {
+	if p.id != nil {
+		return Addr(p.id.Host, p.id.Port)
+	} else {
+		return "???"
+	}
+}
 
 func (p *Provider) Services() []string {
 	services := make([]string, 0, len(p.services))
@@ -71,7 +77,7 @@ func (p *Providers) getProviders(services ...string) []*Provider {
 	return providers
 }
 
-func (p *Providers) register(conn *monte.Conn, id kademlia.ID, services []string) *Provider {
+func (p *Providers) register(conn *monte.Conn, id *kademlia.ID, services []string) *Provider {
 	p.Lock()
 	defer p.Unlock()
 

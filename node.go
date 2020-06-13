@@ -182,7 +182,7 @@ func (n *Node) handleHandshakePacket(ctx *monte.Context, body []byte) error {
 	fmt.Printf("%s has connected to you. Services: %s\n", provider.Addr(), provider.Services())
 
 	pkt = HandshakePacket{
-		ID:       n.id,
+		ID:       &n.id,
 		Services: n.Services(),
 	}
 	pkt.Signature = n.sec.Sign(pkt.AppendPayloadTo(body[:0]))

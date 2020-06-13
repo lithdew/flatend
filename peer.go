@@ -97,7 +97,7 @@ func (p *Peer) Dial() {
 	defer close(p.ready)
 
 	pkt := HandshakePacket{
-		ID:       p.node.id,
+		ID:       &p.node.id,
 		Services: p.node.Services(),
 	}
 	pkt.Signature = p.node.sec.Sign(pkt.AppendPayloadTo(nil))
@@ -126,7 +126,7 @@ func (p *Peer) Dial() {
 		return
 	}
 
-	p.id = pkt.ID
+	p.id = *pkt.ID
 	p.svcs = pkt.Services
 
 	fmt.Printf("You are now connected to %s. Services: %s\n", p.addr, p.svcs)

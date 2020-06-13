@@ -40,8 +40,6 @@ func releaseContext(ctx *Context) { contextPool.Put(ctx) }
 
 type Handler func(ctx *Context) []byte
 
-var DefaultHandler Handler = func(ctx *Context) []byte { return nil }
-
 type Opcode = uint8
 
 const (
@@ -55,7 +53,7 @@ type PayloadPacket struct {
 }
 
 type HandshakePacket struct {
-	ID        kademlia.ID
+	ID        *kademlia.ID
 	Services  []string
 	Signature kademlia.Signature
 }
@@ -69,23 +67,42 @@ func (h HandshakePacket) AppendPayloadTo(dst []byte) []byte {
 }
 
 func (h HandshakePacket) AppendTo(dst []byte) []byte {
-	dst = h.ID.AppendTo(dst)
+	if h.ID != nil {
+		dst = append(dst, 1)
+		dst = h.ID.AppendTo(dst)
+	} else {
+		dst = append(dst, 0)
+	}
 	dst = append(dst, uint8(len(h.Services)))
 	for _, service := range h.Services {
 		dst = append(dst, uint8(len(service)))
 		dst = append(dst, service...)
 	}
-	dst = append(dst, h.Signature[:]...)
+	if h.ID != nil {
+		dst = append(dst, h.Signature[:]...)
+	}
 	return dst
 }
 
 func UnmarshalHandshakePacket(buf []byte) (HandshakePacket, error) {
 	var pkt HandshakePacket
-	id, buf, err := kademlia.UnmarshalID(buf)
-	if err != nil {
-		return pkt, err
+
+	if len(buf) < 1 {
+		return pkt, io.ErrUnexpectedEOF
 	}
-	pkt.ID = id
+
+	hasID := buf[0] == 1
+	buf = buf[1:]
+
+	if hasID {
+		id, leftover, err := kademlia.UnmarshalID(buf)
+		if err != nil {
+			return pkt, err
+		}
+		pkt.ID = &id
+
+		buf = leftover
+	}
 
 	if len(buf) < 1 {
 		return pkt, io.ErrUnexpectedEOF
@@ -111,19 +128,24 @@ func UnmarshalHandshakePacket(buf []byte) (HandshakePacket, error) {
 		buf = buf[size:]
 	}
 
-	if len(buf) < kademlia.SizeSignature {
-		return pkt, io.ErrUnexpectedEOF
-	}
+	if hasID {
+		if len(buf) < kademlia.SizeSignature {
+			return pkt, io.ErrUnexpectedEOF
+		}
 
-	pkt.Signature, buf = *(*kademlia.Signature)(unsafe.Pointer(&((buf[:kademlia.SizeSignature])[0]))),
-		buf[kademlia.SizeSignature:]
+		pkt.Signature, buf = *(*kademlia.Signature)(unsafe.Pointer(&((buf[:kademlia.SizeSignature])[0]))),
+			buf[kademlia.SizeSignature:]
+	}
 
 	return pkt, nil
 }
 
 func (h HandshakePacket) Validate(dst []byte) error {
-	if err := h.ID.Validate(); err != nil {
-		return err
+	if h.ID != nil {
+		err := h.ID.Validate()
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, service := range h.Services {
@@ -136,7 +158,7 @@ func (h HandshakePacket) Validate(dst []byte) error {
 		}
 	}
 
-	if !h.Signature.Verify(h.ID.Pub, h.AppendPayloadTo(dst)) {
+	if h.ID != nil && !h.Signature.Verify(h.ID.Pub, h.AppendPayloadTo(dst)) {
 		return errors.New("signature is malformed")
 	}
 

@@ -75,7 +75,13 @@ class ID {
 
 
 class HandshakePacket {
-    constructor({id = new ID({}), services = [], signature = Buffer.alloc(nacl.sign.signatureLength)}) {
+    /**
+     *
+     * @param {ID | null}id
+     * @param {[]} services
+     * @param {Buffer} signature
+     */
+    constructor({id = null, services = [], signature = Buffer.alloc(nacl.sign.signatureLength)}) {
         this.id = id;
         this.services = services;
         this.signature = signature;
@@ -101,11 +107,22 @@ class HandshakePacket {
             Buffer.of(this.services.length),
         );
 
-        return Buffer.concat([
-            this.id.encode(),
-            services,
-            this.signature,
-        ]);
+        const bufs = [];
+
+        if (this.id) {
+            bufs.push(Buffer.of(1))
+            bufs.push(this.id.encode())
+        } else {
+            bufs.push(Buffer.of(0))
+        }
+
+        bufs.push(services);
+
+        if (this.id) {
+            bufs.push(this.signature);
+        }
+
+        return Buffer.concat(bufs);
     }
 
     /**
@@ -114,15 +131,22 @@ class HandshakePacket {
      * @return {HandshakePacket}
      */
     static decode(buf) {
-        let decoded = ID.decode(buf);
+        const hasID = buf.readUInt8();
+        buf = buf.slice(1);
 
-        let id = decoded[0];
-        buf = decoded[1];
+        const packet = new HandshakePacket({});
+
+        if (hasID) {
+            let decoded = ID.decode(buf);
+
+            packet.id = decoded[0];
+            buf = decoded[1];
+        }
 
         const size = buf.readUInt8();
         buf = buf.slice(1);
 
-        const services = [...Array(size)].map(() => {
+        packet.services = [...Array(size)].map(() => {
             const size = buf.readUInt8();
             buf = buf.slice(1);
 
@@ -132,13 +156,13 @@ class HandshakePacket {
             return service.toString("utf8");
         });
 
-        const signature = buf.slice(0, nacl.sign.signatureLength);
-        buf = buf.slice(nacl.sign.signatureLength);
+        if (hasID) {
+            packet.signature = buf.slice(0, nacl.sign.signatureLength);
+            buf = buf.slice(nacl.sign.signatureLength);
 
-        const packet = new HandshakePacket({id, services, signature});
-
-        if (!nacl.sign.detached.verify(packet.payload, packet.signature, packet.id.publicKey)) {
-            throw new Error(`Signature specified in handshake packet is invalid.`)
+            if (!nacl.sign.detached.verify(packet.payload, packet.signature, packet.id.publicKey)) {
+                throw new Error(`Signature specified in handshake packet is invalid.`)
+            }
         }
 
         return packet;

@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/flatend"
 	"github.com/lithdew/kademlia"
+	"github.com/spf13/pflag"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -160,7 +161,16 @@ var Methods = map[string]struct{}{
 }
 
 func main() {
-	buf, err := ioutil.ReadFile("config.toml")
+	var configPath string
+	var bindHost net.IP
+	var bindPort uint16
+
+	pflag.StringVarP(&configPath, "config", "c", "config.toml", "path to config file")
+	pflag.IPVarP(&bindHost, "host", "h", net.IPv4(127, 0, 0, 1), "bind host")
+	pflag.Uint16VarP(&bindPort, "port", "p", 9000, "bind port")
+	pflag.Parse()
+
+	buf, err := ioutil.ReadFile(configPath)
 	check(err)
 
 	var cfg Config
@@ -170,13 +180,15 @@ func main() {
 	_, priv, err := kademlia.GenerateKeys(nil)
 	check(err)
 
-	addr := "127.0.0.1:9000"
+	addr := flatend.Addr(bindHost, bindPort)
 
 	node, err := flatend.NewNode(priv, addr)
 	check(err)
 
 	ln, err := net.Listen("tcp", addr)
 	check(err)
+
+	fmt.Printf("Listening for microservices on %s.\n", ln.Addr())
 
 	go func() {
 		check(node.Serve(ln))

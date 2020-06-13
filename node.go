@@ -185,7 +185,7 @@ func (n *Node) handleHandshakePacket(ctx *monte.Context, body []byte) error {
 		ID:       n.id,
 		Services: n.Services(),
 	}
-	pkt.Signature = n.sec.Sign(pkt.AppendPayloadTo(nil))
+	pkt.Signature = n.sec.Sign(pkt.AppendPayloadTo(body[:0]))
 
 	return ctx.Reply(pkt.AppendTo(body[:0]))
 }

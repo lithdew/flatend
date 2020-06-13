@@ -149,7 +149,7 @@ class MonteSocket extends Duplex {
     }
 
     async request(req, timeout = 3000) {
-        const seq = this.counter === 0 ? 1 : this.counter++;
+        const seq = this.counter === 0 ? 1 : this.counter += 2;
         if (this.counter === 2 ** 32) this.counter = 0;
 
         const response = new Promise((resolve, reject) => {
@@ -218,9 +218,7 @@ class MonteSocket extends Duplex {
 
                 if (seq === 0 || this.pending.listenerCount(`${seq}`) === 0) {
                     try {
-                        if (!this.push({seq, frame})) {
-                            this._paused = true;
-                        }
+                        this.push({seq, frame});
                     } catch (err) {
                         this.emit("error", err);
                     }

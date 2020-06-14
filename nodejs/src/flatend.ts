@@ -91,7 +91,6 @@ export class Node {
 
                     try {
                         await this.dial(addr);
-                        console.log(`Successfully connected to ${addr}.`);
                     } catch (err) {
                         setTimeout(reconnect, 1000);
                     }
@@ -125,6 +124,8 @@ export class Node {
         peer.services = packet.services;
 
         // TODO(kenta): register services to node
+
+        console.log(`Successfully dialed ${addr}.`);
     }
 
     private _data({sock, seq, body}: { sock: MonteSocket, seq: number, body: Buffer }) {

@@ -179,13 +179,7 @@ func main() {
 
 	addr := flatend.Addr(bindHost, bindPort)
 
-	node := &flatend.Node{
-		PublicAddr: addr,
-		SecretKey:  flatend.GenerateSecretKey(),
-		BindAddrs: []flatend.BindFunc{
-			flatend.BindTCP(addr),
-		},
-	}
+	node := &flatend.Node{PublicAddr: addr}
 	check(node.Start())
 
 	fmt.Printf("Listening for microservices on %s.\n", addr)

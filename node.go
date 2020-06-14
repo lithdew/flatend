@@ -47,7 +47,7 @@ func GenerateSecretKey() kademlia.PrivateKey {
 
 func (n *Node) Start(addrs ...string) error {
 	if n.PublicAddr != "" && n.SecretKey == kademlia.ZeroPrivateKey {
-		return errors.New("secret key must be provided if microservice has a public address to advertise")
+		n.SecretKey = GenerateSecretKey()
 	}
 
 	var (
@@ -93,6 +93,21 @@ func (n *Node) Start(addrs ...string) error {
 	n.srv = &monte.Server{
 		Handler:   n,
 		ConnState: n,
+	}
+
+	if n.id != nil && len(n.BindAddrs) == 0 {
+		ln, err := BindTCP(Addr(n.id.Host, n.id.Port))()
+		if err != nil {
+			return err
+		}
+
+		n.wg.Add(1)
+		go func() {
+			defer n.wg.Done()
+			n.srv.Serve(ln)
+		}()
+
+		n.lns = append(n.lns, ln)
 	}
 
 	for _, fn := range n.BindAddrs {

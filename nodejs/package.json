@@ -1,15 +1,17 @@
 {
   "name": "flatend",
-  "version": "1.0.0",
-  "main": "index.js",
-  "repository": "https://github.com/lithdew/flatend",
-  "author": "Kenta Iwasaki <kenta@lithdew.net>",
-  "license": "MIT",
-  "type": "module",
+  "scripts": {
+    "start": "rm -rf ./build && yarn tsc && node build/index.js"
+  },
   "dependencies": {
     "blake2b": "^2.1.3",
     "ip": "^1.1.5",
-    "readable-stream": "^3.6.0",
     "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "@types/ip": "^1.1.0",
+    "@types/node": "^14.0.13",
+    "core-js": "^3.6.5",
+    "typescript": "^3.9.5"
   }
 }

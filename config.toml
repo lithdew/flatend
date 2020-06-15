@@ -22,5 +22,5 @@ path = "GET /todos/:id"
 service = "get_todos"
 
 [[http.routes]]
-path = "POST /todos"
-service = "create_todo"
+path = "POST /pipe"
+service = "pipe"

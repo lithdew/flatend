@@ -6,6 +6,7 @@ import (
 	"github.com/jpillora/backoff"
 	"github.com/lithdew/kademlia"
 	"github.com/lithdew/monte"
+	"io"
 	"math"
 	"net"
 	"sync"
@@ -225,21 +226,40 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 
 		// register the microservice if it hasn't been registered before
 
-		provider := n.providers.register(ctx.Conn(), packet.ID, packet.Services)
+		provider := n.providers.register(ctx.Conn(), packet.ID, packet.Services, false)
 		fmt.Printf("%s has connected to you. Services: %s\n", provider.Addr(), provider.Services())
 
 		// always reply back with what services we provide, and our
 		// id if we want to publicly advertise our microservice
 
 		return ctx.Reply(n.createHandshakePacket(body[:0]).AppendTo(body[:0]))
-	case OpcodeRequest:
-		packet, err := UnmarshalRequestPacket(body)
-		if err != nil {
-			return err
+
+	case OpcodeServiceRequest:
+		provider := n.providers.findProvider(ctx.Conn())
+		if provider == nil {
+			return errors.New("conn is not a provider")
 		}
 
-		ftx := acquireContext(ctx.Conn(), packet.Data)
-		defer releaseContext(ftx)
+		packet, err := UnmarshalServiceRequestPacket(body)
+		if err != nil {
+			return fmt.Errorf("failed to decode service request packet: %w", err)
+		}
+
+		// if stream does not exist, the stream is a request to process some payload! register
+		// a new stream, and handle it.
+
+		// if the stream exists, it's a stream we made! proceed to start receiving its payload,
+		// b/c the payload will basically be our peer giving us a response.
+
+		// i guess we need to separate streams from the server-side, and streams from the client-side.
+		// client-side starts with stream ids that are odd (1, 3, 5, 7, 9, ...) and server-side
+		// starts with stream ids that are even (0, 2, 4, 6, 8, 10).
+
+		stream, created := provider.RegisterStream(packet)
+		if !created {
+			return fmt.Errorf("got service request with stream id %d, but node is making service request"+
+				"with the given id already", packet.ID)
+		}
 
 		for _, service := range packet.Services {
 			handler, exists := n.Services[service]
@@ -247,10 +267,115 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 				continue
 			}
 
-			return ctx.Reply(ResponsePacket(handler(ftx)).AppendTo(body[:0]))
+			go func() {
+				ctx := acquireContext(packet.Headers, stream.Reader, stream.ID, ctx.Conn())
+				defer releaseContext(ctx)
+
+				handler(ctx)
+
+				if !ctx.written {
+					packet := ServiceResponsePacket{
+						ID:      ctx.ID,
+						Handled: true,
+						Headers: ctx.headers,
+					}
+
+					ctx.written = true
+
+					err := ctx.Conn.Send(packet.AppendTo([]byte{OpcodeServiceResponse}))
+					if err != nil {
+						provider.CloseStreamWithError(stream, err)
+						return
+					}
+
+					return
+				}
+
+				err := ctx.Conn.Send(DataPacket{ID: stream.ID}.AppendTo([]byte{OpcodeData}))
+				if err != nil {
+					provider.CloseStreamWithError(stream, err)
+					return
+				}
+			}()
+
+			return nil
 		}
 
-		return ctx.Reply(ResponsePacket(nil).AppendTo(body[:0]))
+		response := ServiceResponsePacket{
+			ID:      packet.ID,
+			Handled: false,
+		}
+
+		return ctx.Conn().SendNoWait(response.AppendTo([]byte{OpcodeServiceResponse}))
+	case OpcodeServiceResponse:
+		provider := n.providers.findProvider(ctx.Conn())
+		if provider == nil {
+			return errors.New("conn is not a provider")
+		}
+
+		packet, err := UnmarshalServiceResponsePacket(body)
+		if err != nil {
+			return fmt.Errorf("failed to decode services response packet: %w", err)
+		}
+
+		stream, exists := provider.GetStream(packet.ID)
+		if !exists {
+			return fmt.Errorf("stream with id %d got a service response although no service request was sent",
+				packet.ID)
+		}
+
+		stream.Header = &packet
+		stream.once.Do(stream.wg.Done)
+
+		return nil
+	case OpcodeData:
+		provider := n.providers.findProvider(ctx.Conn())
+		if provider == nil {
+			return errors.New("conn is not a provider")
+		}
+
+		packet, err := UnmarshalDataPacket(body)
+		if err != nil {
+			return fmt.Errorf("failed to decode stream payload packet: %w", err)
+		}
+
+		// the stream must always exist
+
+		stream, exists := provider.GetStream(packet.ID)
+		if !exists {
+			return fmt.Errorf("stream with id %d does not exist", packet.ID)
+		}
+
+		// there should never be any empty payload packets
+
+		if len(packet.Data) > ChunkSize {
+			err = fmt.Errorf("stream with id %d got packet over max limit of ChunkSize bytes: got %d bytes",
+				packet.ID, len(packet.Data))
+			provider.CloseStreamWithError(stream, err)
+			return err
+		}
+
+		if stream.ID%2 == 1 && stream.Header == nil {
+			err = fmt.Errorf("outgoing stream with id %d received a payload packet but has not received a header yet",
+				packet.ID)
+			provider.CloseStreamWithError(stream, err)
+			return err
+		}
+
+		// if the chunk is zero-length, the stream has been closed
+
+		if len(packet.Data) == 0 {
+			provider.CloseStreamWithError(stream, io.EOF)
+		} else {
+			_, err = stream.Writer.Write(packet.Data)
+			if err != nil && !errors.Is(err, io.ErrClosedPipe) {
+				err = fmt.Errorf("failed to write payload: %w", err)
+				provider.CloseStreamWithError(stream, err)
+				return err
+			}
+		}
+
+		return nil
 	}
 
 	return fmt.Errorf("unknown opcode %d", opcode)
@@ -278,6 +403,10 @@ func (n *Node) Probe(addr string) error {
 	if err != nil {
 		return err
 	}
+
+	// pre-register the provider
+	n.providers.register(conn, nil, nil, true)
+
 	req := n.createHandshakePacket(nil).AppendTo([]byte{OpcodeHandshake})
 	res, err := conn.Request(req[:0], req)
 	if err != nil {
@@ -298,7 +427,9 @@ func (n *Node) Probe(addr string) error {
 		if !packet.ID.Host.Equal(resolved.IP) || packet.ID.Port != uint16(resolved.Port) {
 			return fmt.Errorf("dialed '%s' which advertised '%s'", resolved, addr)
 		}
-		n.providers.register(conn, packet.ID, packet.Services)
+
+		// update the provider with id and services info
+		n.providers.register(conn, packet.ID, packet.Services, true)
 	}
 
 	fmt.Printf("You are now connected to %s. Services: %s\n", addr, packet.Services)
@@ -306,29 +437,18 @@ func (n *Node) Probe(addr string) error {
 	return nil
 }
 
-func (n *Node) Request(services []string, data []byte) ([]byte, error) {
+func (n *Node) Push(services []string, headers map[string]string, body io.ReadCloser) (*Stream, error) {
 	providers := n.providers.getProviders(services...)
 
-	packet := RequestPacket{
-		Services: services,
-		Data:     data,
-	}
-
-	req := packet.AppendTo([]byte{OpcodeRequest})
-
-	var (
-		dst []byte
-		err error
-	)
-
 	for _, provider := range providers {
-		dst, err = provider.conn.Request(dst[:0], req)
-		if err == nil {
-			dst, err = UnmarshalResponsePacket(dst)
+		stream, err := provider.Push(services, headers, body)
+		if err != nil {
+			if errors.Is(err, ErrProviderNotAvailable) {
+				continue
+			}
+			return nil, err
 		}
-		if err == nil && dst != nil {
-			return dst, nil
-		}
+		return stream, nil
 	}
 
 	return nil, fmt.Errorf("no nodes were able to process your request for service(s): %s", services)

@@ -1,19 +1,13 @@
 package flatend
 
 import (
-	"errors"
-	"fmt"
-	"github.com/lithdew/bytesutil"
-	"github.com/lithdew/kademlia"
 	"github.com/lithdew/monte"
 	"io"
-	"math"
 	"net"
-	"strconv"
 	"sync"
-	"unicode/utf8"
-	"unsafe"
 )
+
+const ChunkSize = 2048
 
 type BindFunc func() (net.Listener, error)
 
@@ -33,252 +27,77 @@ func BindTCPv6(addr string) BindFunc {
 	return func() (net.Listener, error) { return net.Listen("tcp6", addr) }
 }
 
+var _ io.Writer = (*Context)(nil)
+
 type Context struct {
-	conn *monte.Conn
-	body []byte
+	Headers map[string]string
+	Body    io.ReadCloser
+
+	ID      uint32 // stream id
+	Conn    *monte.Conn
+	headers map[string]string // response headers
+	written bool              // written before?
 }
 
-func (c *Context) Conn() *monte.Conn { return c.conn }
-func (c *Context) Body() []byte      { return c.body }
+func (c *Context) Write(data []byte) (int, error) {
+	if !c.written {
+		packet := ServiceResponsePacket{
+			ID:      c.ID,
+			Handled: true,
+			Headers: c.headers,
+		}
+
+		c.written = true
+
+		err := c.Conn.Send(packet.AppendTo([]byte{OpcodeServiceResponse}))
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if len(data) == 0 { // disallow writing zero bytes
+		return 0, nil
+	}
+
+	for i := 0; i < len(data); i += ChunkSize {
+		start := i
+		end := i + ChunkSize
+		if end > len(data) {
+			end = len(data)
+		}
+
+		packet := DataPacket{
+			ID:   c.ID,
+			Data: data[start:end],
+		}
+
+		err := c.Conn.Send(packet.AppendTo([]byte{OpcodeData}))
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return len(data), nil
+}
 
 var contextPool sync.Pool
 
-func acquireContext(conn *monte.Conn, body []byte) *Context {
+func acquireContext(headers map[string]string, body io.ReadCloser, id uint32, conn *monte.Conn) *Context {
 	v := contextPool.Get()
 	if v == nil {
-		v = &Context{}
+		v = &Context{headers: make(map[string]string)}
 	}
 	ctx := v.(*Context)
-	ctx.conn = conn
-	ctx.body = body
+	ctx.Headers = headers
+	ctx.Body = body
+	ctx.ID = id
+	ctx.Conn = conn
 	return ctx
 }
 
-func releaseContext(ctx *Context) { contextPool.Put(ctx) }
-
-type Handler func(ctx *Context) []byte
-
-type Opcode = uint8
-
-const (
-	OpcodeHandshake Opcode = iota
-	OpcodeRequest
-)
-
-type PayloadPacket struct {
-	Headers map[string]string
-	Body    []byte
+func releaseContext(ctx *Context) {
+	ctx.written = false
+	contextPool.Put(ctx)
 }
 
-type HandshakePacket struct {
-	ID        *kademlia.ID
-	Services  []string
-	Signature kademlia.Signature
-}
-
-func (h HandshakePacket) AppendPayloadTo(dst []byte) []byte {
-	dst = h.ID.AppendTo(dst)
-	for _, service := range h.Services {
-		dst = append(dst, service...)
-	}
-	return dst
-}
-
-func (h HandshakePacket) AppendTo(dst []byte) []byte {
-	if h.ID != nil {
-		dst = append(dst, 1)
-		dst = h.ID.AppendTo(dst)
-	} else {
-		dst = append(dst, 0)
-	}
-	dst = append(dst, uint8(len(h.Services)))
-	for _, service := range h.Services {
-		dst = append(dst, uint8(len(service)))
-		dst = append(dst, service...)
-	}
-	if h.ID != nil {
-		dst = append(dst, h.Signature[:]...)
-	}
-	return dst
-}
-
-func UnmarshalHandshakePacket(buf []byte) (HandshakePacket, error) {
-	var pkt HandshakePacket
-
-	if len(buf) < 1 {
-		return pkt, io.ErrUnexpectedEOF
-	}
-
-	hasID := buf[0] == 1
-	buf = buf[1:]
-
-	if hasID {
-		id, leftover, err := kademlia.UnmarshalID(buf)
-		if err != nil {
-			return pkt, err
-		}
-		pkt.ID = &id
-
-		buf = leftover
-	}
-
-	if len(buf) < 1 {
-		return pkt, io.ErrUnexpectedEOF
-	}
-
-	var size uint8
-	size, buf = buf[0], buf[1:]
-
-	if len(buf) < int(size) {
-		return pkt, io.ErrUnexpectedEOF
-	}
-
-	pkt.Services = make([]string, size)
-	for i := 0; i < len(pkt.Services); i++ {
-		if len(buf) < 1 {
-			return pkt, io.ErrUnexpectedEOF
-		}
-		size, buf = buf[0], buf[1:]
-		if len(buf) < int(size) {
-			return pkt, io.ErrUnexpectedEOF
-		}
-		pkt.Services[i] = string(buf[:size])
-		buf = buf[size:]
-	}
-
-	if hasID {
-		if len(buf) < kademlia.SizeSignature {
-			return pkt, io.ErrUnexpectedEOF
-		}
-
-		pkt.Signature, buf = *(*kademlia.Signature)(unsafe.Pointer(&((buf[:kademlia.SizeSignature])[0]))),
-			buf[kademlia.SizeSignature:]
-	}
-
-	return pkt, nil
-}
-
-func (h HandshakePacket) Validate(dst []byte) error {
-	if h.ID != nil {
-		err := h.ID.Validate()
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, service := range h.Services {
-		if !utf8.ValidString(service) {
-			return fmt.Errorf("service '%s' in hello packet is not valid utf8", service)
-		}
-		if len(service) > math.MaxUint8 {
-			return fmt.Errorf("service '%s' in hello packet is too large - must <= %d bytes",
-				service, math.MaxUint8)
-		}
-	}
-
-	if h.ID != nil && !h.Signature.Verify(h.ID.Pub, h.AppendPayloadTo(dst)) {
-		return errors.New("signature is malformed")
-	}
-
-	return nil
-}
-
-type ResponsePacket []byte
-
-func (r ResponsePacket) AppendTo(dst []byte) []byte {
-	if r == nil {
-		dst = append(dst, 0)
-	} else {
-		dst = append(dst, 1)
-		dst = bytesutil.AppendUint32BE(dst, uint32(len(r)))
-		dst = append(dst, r...)
-	}
-	return dst
-}
-
-func UnmarshalResponsePacket(buf []byte) (ResponsePacket, error) {
-	if len(buf) < 1 || (buf[0] != 0 && buf[0] != 1) {
-		return nil, io.ErrUnexpectedEOF
-	}
-	handled := buf[0] == 1
-	buf = buf[1:]
-	if !handled {
-		return nil, nil
-	}
-	if len(buf) < 4 {
-		return nil, io.ErrUnexpectedEOF
-	}
-	size := bytesutil.Uint32BE(buf[:4])
-	buf = buf[4:]
-	if uint32(len(buf)) < size {
-		return nil, io.ErrUnexpectedEOF
-	}
-	return buf, nil
-}
-
-type RequestPacket struct {
-	Services []string
-	Data     []byte
-}
-
-func (r RequestPacket) AppendTo(dst []byte) []byte {
-	dst = append(dst, uint8(len(r.Services)))
-	for _, service := range r.Services {
-		dst = append(dst, uint8(len(service)))
-		dst = append(dst, service...)
-	}
-	dst = bytesutil.AppendUint32BE(dst, uint32(len(r.Data)))
-	dst = append(dst, r.Data...)
-	return dst
-}
-
-func UnmarshalRequestPacket(buf []byte) (RequestPacket, error) {
-	var pkt RequestPacket
-
-	if len(buf) < 1 {
-		return pkt, io.ErrUnexpectedEOF
-	}
-
-	var size uint8
-	size, buf = buf[0], buf[1:]
-
-	if len(buf) < int(size) {
-		return pkt, io.ErrUnexpectedEOF
-	}
-
-	pkt.Services = make([]string, size)
-	for i := 0; i < len(pkt.Services); i++ {
-		if len(buf) < 1 {
-			return pkt, io.ErrUnexpectedEOF
-		}
-		size, buf = buf[0], buf[1:]
-		if len(buf) < int(size) {
-			return pkt, io.ErrUnexpectedEOF
-		}
-		pkt.Services[i] = string(buf[:size])
-		buf = buf[size:]
-	}
-
-	if len(buf) < 4 {
-		return pkt, io.ErrUnexpectedEOF
-	}
-
-	var length uint32
-	length, buf = bytesutil.Uint32BE(buf[:4]), buf[4:]
-
-	if uint32(len(buf)) < length {
-		return pkt, io.ErrUnexpectedEOF
-	}
-
-	pkt.Data = buf[:length]
-	return pkt, nil
-}
-
-func Addr(host net.IP, port uint16) string {
-	h := ""
-	if len(host) > 0 {
-		h = host.String()
-	}
-	p := strconv.FormatUint(uint64(port), 10)
-	return net.JoinHostPort(h, p)
-}
+type Handler func(ctx *Context)

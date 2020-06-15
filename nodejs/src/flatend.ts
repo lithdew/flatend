@@ -1,7 +1,5 @@
 import "core-js/shim";
-
-import {EventEmitter} from "events";
-import {HandshakePacket, ID, Opcode, RequestPacket, ResponsePacket} from "./packet";
+import {DataPacket, HandshakePacket, ID, Opcode, ServiceRequestPacket, ServiceResponsePacket} from "./packet";
 import nacl from "tweetnacl";
 import assert from "assert";
 import {MonteSocket} from "./monte";
@@ -9,6 +7,7 @@ import * as dns from "dns";
 import * as net from "net";
 import * as ip from "ip";
 import {promisify} from "util";
+import {Duplex, finished} from "stream";
 
 
 interface NodeIdentityOpts {
@@ -17,24 +16,98 @@ interface NodeIdentityOpts {
 }
 
 const identityOpts = (opts: any): opts is NodeIdentityOpts => opts && ("keys" in opts && "id" in opts);
-const str = (p: any): p is string => typeof p === "string";
 
 type NodeOpts = NodeIdentityOpts;
 
 const lookup = async (hostname: string) => net.isIP(hostname) ? hostname : (await promisify(dns.lookup)(hostname)).address;
 
-interface Peer {
-    sock: MonteSocket;
-    id?: ID | null;
-    services?: string[];
+export class Context extends Duplex {
+    public headers: { [key: string]: string }
+
+    _id: number;
+    _sock: MonteSocket;
+    _written: boolean = false;
+    _headers: { [key: string]: string } = {};
+
+    constructor(id: number, sock: MonteSocket, headers: { [key: string]: string }) {
+        super({allowHalfOpen: true});
+
+        this.headers = headers;
+
+        this._id = id;
+        this._sock = sock;
+
+        finished(this, {readable: false}, () => {
+            this._writeHeader();
+            const packet = new DataPacket(this._id, Buffer.of());
+            this._sock.send(0, Buffer.concat([Buffer.of(Opcode.Data), packet.encode()]));
+        });
+    }
+
+    header(key: string, val: string): Context {
+        this._headers[key] = val;
+        return this;
+    }
+
+    _writeHeader() {
+        if (this._written) return;
+
+        this._written = true;
+        const response = new ServiceResponsePacket(this._id, true, this._headers);
+        this._sock.send(0, Buffer.concat([Buffer.of(Opcode.ServiceResponse), response.encode()]));
+    }
+
+    _write(chunk: any, encoding: BufferEncoding, callback: (error?: (Error | null)) => void) {
+        if (chunk.length === 0) return;
+
+        this._writeHeader();
+
+        for (let i = 0; i < chunk.byteLength; i += 2048) {
+            let start = i;
+
+            let end = i + 2048;
+            if (end > chunk.byteLength) end = chunk.byteLength;
+
+            const packet = new DataPacket(this._id, chunk.slice(start, end));
+            this._sock.send(0, Buffer.concat([Buffer.of(Opcode.Data), packet.encode()]));
+        }
+
+        callback();
+    }
+
+    _read(size: number) {
+        return;
+    }
 }
 
-export class Node {
-    #peers: Map<string, Peer> = new Map<string, Peer>();
-    #listeners: EventEmitter = new EventEmitter();
+class Client {
+    sock: MonteSocket;
 
-    #id: ID | null = null;
-    #keys: nacl.SignKeyPair | null = null;
+    count: number; // streams count
+    streams: Map<number, Context>; // stream id -> stream
+
+    id?: ID | null;
+    services?: string[];
+
+
+    constructor(sock: MonteSocket) {
+        this.sock = sock;
+
+        this.count = 0;
+        this.streams = new Map<number, Context>();
+    }
+}
+
+type Handler = (ctx: Context) => void;
+
+export class Node {
+    #services: Map<string, WeakSet<Client>> = new Map<string, WeakSet<Client>>();
+    #providers: WeakMap<MonteSocket, Client> = new WeakMap<MonteSocket, Client>();
+    #clients: Map<string, Client> = new Map<string, Client>();
+    #handlers: Map<string, Handler> = new Map<string, Handler>();
+
+    readonly #id: ID | null = null;
+    readonly #keys: nacl.SignKeyPair | null = null;
 
     public constructor(opts?: NodeOpts) {
         if (identityOpts(opts)) {
@@ -48,24 +121,12 @@ export class Node {
     };
 
     get services(): string[] {
-        return this.#listeners.eventNames().map(name => name.toString())
+        return [...this.#handlers.keys()];
     }
 
-    public register(service: string, handler: (data: Buffer) => any) {
-        assert(this.#listeners.listenerCount(service) === 0);
-
-        this.#listeners.on(service, async ({sock, seq, data}) => {
-            let response: Buffer | null;
-            try {
-                let result = await handler(data);
-                if (result && !str(result) && !Buffer.isBuffer(result)) result = JSON.stringify(result);
-                if (result && str(result)) result = Buffer.from(result, "utf8");
-                response = result;
-            } catch (err) {
-                response = Buffer.from(JSON.stringify({error: err}), "utf8");
-            }
-            sock.send(seq, new ResponsePacket(response).encode());
-        });
+    public register(service: string, handler: Handler) {
+        assert(!this.#handlers.has(service));
+        this.#handlers.set(service, handler);
     }
 
     public async dial(addr: string) {
@@ -79,12 +140,12 @@ export class Node {
 
         addr = host + ":" + port;
 
-        let peer = this.#peers.get(addr);
-        if (!peer) {
-            peer = {sock: await MonteSocket.connect({host: host, port: port})};
+        let client = this.#clients.get(addr);
+        if (!client) {
+            client = new Client(await MonteSocket.connect({host: host, port: port}));
 
-            peer.sock.once('end', () => {
-                this.#peers.delete(addr);
+            client.sock.once('end', () => {
+                this.#clients.delete(addr);
 
                 const reconnect = async () => {
                     console.log(`Trying to reconnect to ${addr}. Sleeping for 1s.`);
@@ -99,10 +160,11 @@ export class Node {
                 setTimeout(reconnect, 1000);
             });
 
-            peer.sock.on('data', this._data.bind(this));
-            peer.sock.on('error', console.error);
+            client.sock.on('data', this._data.bind(this));
+            client.sock.on('error', console.error);
 
-            this.#peers.set(addr, peer);
+            this.#clients.set(addr, client);
+            this.#providers.set(client.sock, client);
         }
 
         let packet = new HandshakePacket(null, this.services, null);
@@ -111,21 +173,24 @@ export class Node {
             packet.signature = Buffer.from(nacl.sign(packet.payload, this.#keys!.secretKey));
         }
 
-        const res = await peer.sock.request(Buffer.concat([Buffer.of(Opcode.Handshake), packet.encode()]));
+        const res = await client.sock.request(Buffer.concat([Buffer.of(Opcode.Handshake), packet.encode()]));
         packet = HandshakePacket.decode(res)[0];
 
         if (packet.id && packet.signature) {
             assert(typeof packet.id.host === "string" && ip.isEqual(packet.id.host, host) && packet.id.port === port);
             assert(nacl.sign.detached.verify(packet.payload, packet.signature, packet.id.publicKey));
 
-            peer.id = packet.id;
+            client.id = packet.id;
         }
 
-        peer.services = packet.services;
+        client.services = packet.services;
 
-        // TODO(kenta): register services to node
+        packet.services.forEach(service => {
+            if (!this.#services.has(service)) this.#services.set(service, new WeakSet<Client>());
+            this.#services.get(service)!.add(client!);
+        });
 
-        console.log(`Successfully dialed ${addr}.`);
+        console.log(`Successfully dialed ${addr}. Services: [${packet.services.join(', ')}]`);
     }
 
     private _data({sock, seq, body}: { sock: MonteSocket, seq: number, body: Buffer }) {
@@ -140,16 +205,45 @@ export class Node {
                 }
                 return;
             }
-            case Opcode.Request: {
-                const packet = RequestPacket.decode(body)[0];
+            case Opcode.ServiceRequest: {
+                const packet = ServiceRequestPacket.decode(body)[0];
 
-                const service = packet.services.find(service => this.#listeners.listenerCount(service) > 0);
+                const provider = this.#providers.get(sock);
+
+                assert(provider, 'Socket is not registered as a provider.');
+                assert(!provider.streams.has(packet.id), `Stream with ID ${packet.id} already exists.`);
+
+                const service = packet.services.find(service => this.#handlers.has(service));
                 if (!service) {
-                    sock.send(seq, new ResponsePacket(null).encode());
+                    const response = new ServiceResponsePacket(packet.id, false, {});
+                    sock.send(0, Buffer.concat([Buffer.of(Opcode.ServiceResponse), response.encode()]));
                     return;
                 }
 
-                this.#listeners.emit(service, {sock, seq, data: packet.data});
+                const ctx = new Context(packet.id, sock, packet.headers);
+                provider.streams.set(packet.id, ctx);
+
+                const handler = this.#handlers.get(service)!;
+                handler(ctx);
+
+                return;
+            }
+            case Opcode.Data: {
+                const packet = DataPacket.decode(body)[0];
+
+                const provider = this.#providers.get(sock);
+                assert(provider, 'Socket is not registered as a provider.');
+
+                const ctx = provider.streams.get(packet.id);
+                assert(ctx, `Got data packet with stream ID ${packet.id}, but stream does not exist.`);
+
+                if (packet.data.byteLength > 0) {
+                    ctx.push(packet.data);
+                    return;
+                }
+
+                provider.streams.delete(packet.id);
+                ctx.push(null);
 
                 return;
             }

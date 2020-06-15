@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/lithdew/flatend"
+	"io"
 	"os"
 	"os/signal"
 	"strconv"
@@ -16,12 +18,20 @@ func check(err error) {
 
 var counter uint64 = 0
 
-func handleAllTodos(_ *flatend.Context) []byte {
-	return strconv.AppendUint(nil, atomic.AddUint64(&counter, 1), 10)
+func handleAllTodos(ctx *flatend.Context) {
+	ctx.Write(strconv.AppendUint(nil, atomic.AddUint64(&counter, 1), 10))
 }
 
-func handleGetTodos(ctx *flatend.Context) []byte {
-	return ctx.Body()
+func handleGetTodos(ctx *flatend.Context) {
+	buf, err := json.Marshal(ctx.Headers)
+	if err != nil {
+		return
+	}
+	ctx.Write(buf)
+}
+
+func pipe(ctx *flatend.Context) {
+	io.Copy(ctx, ctx.Body)
 }
 
 func main() {
@@ -29,6 +39,7 @@ func main() {
 		Services: map[string]flatend.Handler{
 			"all_todos": handleAllTodos,
 			"get_todos": handleGetTodos,
+			"pipe":      pipe,
 		},
 	}
 	check(node.Start("0.0.0.0:9000"))

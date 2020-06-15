@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/flatend"
 	"github.com/spf13/pflag"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -16,17 +17,9 @@ import (
 	"os/signal"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-type Request struct {
-	Header http.Header         `json:"header"`
-	Query  url.Values          `json:"query"`
-	Params map[string]string   `json:"params"`
-	Body   jsoniter.RawMessage `json:"body"`
-}
 
 type Config struct {
 	HTTP []ConfigHTTP
@@ -206,48 +199,30 @@ func main() {
 			}
 
 			handler := func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-				req := Request{
-					Header: r.Header,
-					Query:  r.URL.Query(),
+				headers := make(map[string]string)
+				for key := range r.Header {
+					headers[strings.ToLower(key)] = r.Header.Get(key)
 				}
 
-				req.Params = make(map[string]string, len(params))
+				for key := range r.URL.Query() {
+					headers["query."+strings.ToLower(key)] = r.URL.Query().Get(key)
+				}
+
 				for _, param := range params {
-					req.Params[param.Key] = param.Value
+					headers["params."+strings.ToLower(param.Key)] = param.Value
 				}
 
-				body, err := ioutil.ReadAll(r.Body)
-				if err != nil {
-					return
-				}
-				if len(body) == 0 {
-					body = nil
-				}
-
-				if utf8.Valid(body) {
-					req.Body, err = json.Marshal(string(body))
-					if err != nil {
-						return
-					}
-				} else {
-					req.Body, err = json.Marshal(body)
-					if err != nil {
-						return
-					}
-				}
-
-				buf, err := json.Marshal(req)
-				if err != nil {
-					return
-				}
-
-				res, err := node.Request(services, buf)
+				stream, err := node.Push(services, headers, r.Body)
 				if err != nil {
 					w.Write([]byte(err.Error()))
 					return
 				}
 
-				w.Write(res)
+				for name, val := range stream.Header.Headers {
+					w.Header().Set(name, val)
+				}
+
+				_, _ = io.Copy(w, stream.Reader)
 			}
 
 			router.Handle(fields[0], fields[1], handler)

@@ -39,6 +39,10 @@ type Context struct {
 	written bool              // written before?
 }
 
+func (c *Context) WriteHeader(key, val string) {
+	c.headers[key] = val
+}
+
 func (c *Context) Write(data []byte) (int, error) {
 	if !c.written {
 		packet := ServiceResponsePacket{
@@ -97,6 +101,9 @@ func acquireContext(headers map[string]string, body io.ReadCloser, id uint32, co
 
 func releaseContext(ctx *Context) {
 	ctx.written = false
+	for key := range ctx.headers {
+		delete(ctx.headers, key)
+	}
 	contextPool.Put(ctx)
 }
 

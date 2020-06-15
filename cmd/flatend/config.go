@@ -38,6 +38,8 @@ type ConfigHTTP struct {
 	Addr  string
 	Addrs []string
 
+	HTTPS bool
+
 	RedirectTrailingSlash *bool `toml:"redirect_trailing_slash"`
 	RedirectFixedPath     *bool `toml:"redirect_fixed_path"`
 
@@ -99,6 +101,13 @@ type ConfigRoute struct {
 	Max struct {
 		BodySize *int `toml:"body_size"`
 	}
+}
+
+func (r ConfigRoute) GetServices() []string {
+	if r.Service == "" {
+		return r.Services
+	}
+	return []string{r.Service}
 }
 
 func (r ConfigRoute) Validate() error {

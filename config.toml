@@ -1,5 +1,6 @@
 [[http]]
 addr = ":3000"
+https = false
 redirect_trailing_slash = true
 redirect_fixed_path = true
 

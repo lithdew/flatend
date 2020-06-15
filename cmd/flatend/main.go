@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/caddyserver/certmagic"
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/flatend"
 	"github.com/spf13/pflag"
@@ -69,6 +71,7 @@ func main() {
 
 		for _, route := range cfg.Routes {
 			fields := strings.Fields(route.Path)
+			services := route.GetServices()
 
 			var handler http.Handler
 
@@ -93,12 +96,7 @@ func main() {
 						http.ServeFile(w, r, static)
 					})
 				}
-			case route.Service != "" || len(route.Services) > 0:
-				services := route.Services
-				if route.Service != "" {
-					services = append(services, route.Service)
-				}
-
+			case len(services) > 0:
 				handler = HandleService(node, services)
 			}
 
@@ -123,17 +121,40 @@ func main() {
 			check(srv.Close())
 		}()
 
-		for _, addr := range cfg.GetAddrs() {
-			addr := addr
-			go func() {
-				ln, err := net.Listen("tcp", addr)
-				check(err)
+		addrs := cfg.GetAddrs()
 
-				err = srv.Serve(ln)
-				if !errors.Is(err, http.ErrServerClosed) {
+		if cfg.HTTPS {
+			magic := certmagic.NewDefault()
+			check(magic.ManageSync(addrs))
+
+			acme := certmagic.NewACMEManager(magic, certmagic.DefaultACME)
+			srv.Handler = acme.HTTPChallengeHandler(srv.Handler)
+
+			for _, addr := range addrs {
+				addr := addr
+				go func() {
+					ln, err := tls.Listen("tcp", addr, magic.TLSConfig())
 					check(err)
-				}
-			}()
+
+					err = srv.Serve(ln)
+					if !errors.Is(err, http.ErrServerClosed) {
+						check(err)
+					}
+				}()
+			}
+		} else {
+			for _, addr := range addrs {
+				addr := addr
+				go func() {
+					ln, err := net.Listen("tcp", addr)
+					check(err)
+
+					err = srv.Serve(ln)
+					if !errors.Is(err, http.ErrServerClosed) {
+						check(err)
+					}
+				}()
+			}
 		}
 	}
 

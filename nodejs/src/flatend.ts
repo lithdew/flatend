@@ -49,6 +49,15 @@ export class Context extends Duplex {
         return this;
     }
 
+    send(data: string | Buffer | Uint8Array) {
+        this.write(data);
+        this.end();
+    }
+
+    json(data: any) {
+        this.send(JSON.stringify(data));
+    }
+
     _writeHeader() {
         if (this._written) return;
 

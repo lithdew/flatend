@@ -133,7 +133,7 @@ func main() {
 			for _, addr := range addrs {
 				addr := addr
 				go func() {
-					ln, err := tls.Listen("tcp", addr, magic.TLSConfig())
+					ln, err := tls.Listen("tcp", net.JoinHostPort(addr, "443"), magic.TLSConfig())
 					check(err)
 
 					err = srv.Serve(ln)

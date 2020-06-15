@@ -130,13 +130,52 @@ func main() {
 			acme := certmagic.NewACMEManager(magic, certmagic.DefaultACME)
 			srv.Handler = acme.HTTPChallengeHandler(srv.Handler)
 
+			redirect := &http.Server{
+				Handler: acme.HTTPChallengeHandler(
+					http.HandlerFunc(
+						func(w http.ResponseWriter, r *http.Request) {
+							toURL := "https://"
+
+							requestHost := hostOnly(r.Host)
+
+							toURL += requestHost
+							toURL += r.URL.RequestURI()
+
+							w.Header().Set("Connection", "close")
+
+							http.Redirect(w, r, toURL, http.StatusMovedPermanently)
+						},
+					),
+				),
+				ReadTimeout:       cfg.Timeout.Read.Duration,
+				ReadHeaderTimeout: cfg.Timeout.ReadHeader.Duration,
+				IdleTimeout:       cfg.Timeout.Idle.Duration,
+				WriteTimeout:      cfg.Timeout.Write.Duration,
+				MaxHeaderBytes:    cfg.Max.HeaderSize,
+			}
+
+			defer func() {
+				check(redirect.Close())
+			}()
+
 			for _, addr := range addrs {
 				addr := addr
+
 				go func() {
 					ln, err := tls.Listen("tcp", net.JoinHostPort(addr, "443"), magic.TLSConfig())
 					check(err)
 
 					err = srv.Serve(ln)
+					if !errors.Is(err, http.ErrServerClosed) {
+						check(err)
+					}
+				}()
+
+				go func() {
+					ln, err := net.Listen("tcp", net.JoinHostPort(addr, "80"))
+					check(err)
+
+					err = redirect.Serve(ln)
 					if !errors.Is(err, http.ErrServerClosed) {
 						check(err)
 					}

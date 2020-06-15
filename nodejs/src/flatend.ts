@@ -85,7 +85,6 @@ export class Context extends Duplex {
         callback();
     }
 
-    // @ts-ignore
     async body(opts: { limit: number } = {limit: 65536}): Promise<Buffer> {
         return await (new Promise((resolve, reject) => {
             let buffer: Buffer[] = [];

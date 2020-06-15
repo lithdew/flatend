@@ -198,6 +198,8 @@ export class Node {
             client = new Client(await MonteSocket.connect({host: host, port: port}));
 
             client.sock.once('end', () => {
+                client?.services?.forEach(service => this.#services.get(service)?.delete(client!));
+                this.#providers.delete(client!.sock);
                 this.#clients.delete(addr);
 
                 const reconnect = async () => {

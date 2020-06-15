@@ -55,6 +55,7 @@ export class Context extends Duplex {
     }
 
     json(data: any) {
+        this.header('content-type', 'application/json');
         this.send(JSON.stringify(data));
     }
 
@@ -82,6 +83,50 @@ export class Context extends Duplex {
         }
 
         callback();
+    }
+
+    // @ts-ignore
+    async body(opts: { limit: number } = {limit: 65536}): Promise<Buffer> {
+        return await (new Promise((resolve, reject) => {
+            let buffer: Buffer[] = [];
+            let received: number = 0;
+            let complete: boolean = false;
+
+            const done = (err?: Error) => {
+                if (complete) return;
+
+                complete = true;
+                if (!err) {
+                    resolve(Buffer.concat(buffer));
+                } else {
+                    reject(err);
+                }
+            }
+
+            const onData = (data: Buffer) => {
+                if (complete) return;
+                received += data.byteLength;
+                if (received > opts.limit) {
+                    done(new Error(`request entity too large`));
+                    return;
+                }
+                buffer.push(data);
+            };
+
+            const onEnd = (err: Error) => done(err);
+
+            const onClose = () => {
+                this.removeListener('data', onData);
+                this.removeListener('error', onEnd);
+                this.removeListener('end', onEnd);
+                this.removeListener('close', onClose);
+            }
+
+            this.on('data', onData);
+            this.on('error', onEnd);
+            this.on('end', onEnd);
+            this.on('close', onClose);
+        }));
     }
 
     _read(size: number) {
@@ -207,6 +252,8 @@ export class Node {
         body = body.slice(1);
 
         switch (opcode) {
+            case Opcode.ServiceResponse:
+                break;
             case Opcode.Handshake: {
                 const packet = HandshakePacket.decode(body)[0];
                 if (packet.id && packet.signature) {
@@ -233,7 +280,14 @@ export class Node {
                 provider.streams.set(packet.id, ctx);
 
                 const handler = this.#handlers.get(service)!;
-                handler(ctx);
+
+                (async () => {
+                    try {
+                        await handler(ctx);
+                    } catch (err) {
+                        ctx.json({error: err.message});
+                    }
+                })()
 
                 return;
             }

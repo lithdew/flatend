@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/BurntSushi/toml"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/flatend"
 	"github.com/spf13/pflag"
@@ -16,8 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func check(err error) {
 	if err != nil {

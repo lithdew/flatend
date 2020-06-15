@@ -14,6 +14,11 @@ header_size = 1048576
 body_size = 1048576
 
 [[http.routes]]
+path = "GET /"
+static = "."
+nocache = true
+
+[[http.routes]]
 path = "GET /todos"
 service = "all_todos"
 

@@ -5,7 +5,7 @@ async function main() {
     const node = new Node();
 
     node.register("get_todos", (ctx: Context) => ctx.json(ctx.headers));
-    node.register("all_todos", (ctx: Context) => fs.createReadStream("package.json").pipe(ctx.header('content-type', 'application/json')));
+    node.register("all_todos", (ctx: Context) => fs.createReadStream("./nodejs/package.json").pipe(ctx));
 
     node.register('pipe', async (ctx: Context) => {
         const body = await ctx.body({limit: 65536});

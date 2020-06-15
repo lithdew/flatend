@@ -8,136 +8,16 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/flatend"
 	"github.com/spf13/pflag"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
-	"time"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-type Config struct {
-	HTTP []ConfigHTTP
-}
-
-func (c Config) Validate() error {
-	for _, srv := range c.HTTP {
-		err := srv.Validate()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-type Duration struct {
-	time.Duration
-}
-
-func (d *Duration) UnmarshalText(text []byte) error {
-	var err error
-	d.Duration, err = time.ParseDuration(string(text))
-	return err
-}
-
-type ConfigHTTP struct {
-	Addr  string
-	Addrs []string
-
-	RedirectTrailingSlash *bool `toml:"redirect_trailing_slash"`
-	RedirectFixedPath     *bool `toml:"redirect_fixed_path"`
-
-	Timeout struct {
-		Read       Duration
-		ReadHeader Duration
-		Idle       Duration
-		Write      Duration
-		Shutdown   Duration
-	}
-
-	Min struct {
-		BodySize *int `toml:"body_size"`
-	}
-
-	Max struct {
-		HeaderSize int  `toml:"header_size"`
-		BodySize   *int `toml:"body_size"`
-	}
-
-	Routes []ConfigRoute
-}
-
-func (h ConfigHTTP) GetAddrs() []string {
-	if h.Addr != "" {
-		return []string{h.Addr}
-	}
-	return h.Addrs
-}
-
-func (h ConfigHTTP) Validate() error {
-	if h.Addr != "" && h.Addrs != nil {
-		return errors.New("'addr' and 'addrs' cannot both be non-nil at the same time")
-	}
-
-	for _, route := range h.Routes {
-		err := route.Validate()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-type ConfigRoute struct {
-	Path     string
-	Dispatch string
-	Service  string
-	Services []string
-
-	Min struct {
-		BodySize *int `toml:"body_size"`
-	}
-
-	Max struct {
-		BodySize *int `toml:"body_size"`
-	}
-}
-
-func (r ConfigRoute) Validate() error {
-	if r.Service != "" && r.Services != nil {
-		return errors.New("'service' and 'services' cannot both be non-nil at the same time")
-	}
-
-	fields := strings.Fields(r.Path)
-	if len(fields) != 2 {
-		return fmt.Errorf("invalid number of fields in route path '%s' (format: 'HTTP_METHOD /path/here')",
-			r.Path)
-	}
-
-	method := strings.ToUpper(fields[0])
-	_, exists := Methods[method]
-	if !exists {
-		return fmt.Errorf("unknown http method '%s'", method)
-	}
-
-	if len(fields[1]) < 1 || fields[1][0] != '/' {
-		return fmt.Errorf("path must begin with '/' in path '%s'", fields[1])
-	}
-
-	_, err := url.ParseRequestURI(fields[1])
-	if err != nil {
-		return fmt.Errorf("invalid http path '%s': %w", fields[1], err)
-	}
-
-	return nil
-}
 
 func check(err error) {
 	if err != nil {
@@ -193,39 +73,44 @@ func main() {
 		for _, route := range cfg.Routes {
 			fields := strings.Fields(route.Path)
 
-			services := route.Services
-			if route.Service != "" {
-				services = append(services, route.Service)
+			var handler http.Handler
+
+			switch {
+			case route.Static != "":
+				static := route.Static
+
+				info, err := os.Lstat(static)
+				check(err)
+
+				if info.IsDir() {
+					if fields[1] == "/" {
+						router.NotFound = http.FileServer(http.Dir(static))
+					} else {
+						if info.IsDir() && !strings.HasPrefix(fields[1], "/*filepath") {
+							fields[1] = filepath.Join(fields[1], "/*filepath")
+						}
+						router.ServeFiles(fields[1], http.Dir(static))
+					}
+				} else {
+					handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						http.ServeFile(w, r, static)
+					})
+				}
+			case route.Service != "" || len(route.Services) > 0:
+				services := route.Services
+				if route.Service != "" {
+					services = append(services, route.Service)
+				}
+
+				handler = HandleService(node, services)
 			}
 
-			handler := func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-				headers := make(map[string]string)
-				for key := range r.Header {
-					headers[strings.ToLower(key)] = r.Header.Get(key)
+			if handler != nil {
+				if route.NoCache {
+					handler = NoCache(handler)
 				}
-
-				for key := range r.URL.Query() {
-					headers["query."+strings.ToLower(key)] = r.URL.Query().Get(key)
-				}
-
-				for _, param := range params {
-					headers["params."+strings.ToLower(param.Key)] = param.Value
-				}
-
-				stream, err := node.Push(services, headers, r.Body)
-				if err != nil {
-					w.Write([]byte(err.Error()))
-					return
-				}
-
-				for name, val := range stream.Header.Headers {
-					w.Header().Set(name, val)
-				}
-
-				_, _ = io.Copy(w, stream.Reader)
+				router.Handler(fields[0], fields[1], handler)
 			}
-
-			router.Handle(fields[0], fields[1], handler)
 		}
 
 		srv := &http.Server{

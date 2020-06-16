@@ -268,7 +268,7 @@ import "github.com/lithdew/flatend"
 
 node := &flatend.Node{
     // The public address to advertise to other nodes that may want to use this nodes' services.
-	// Default is empty to indicate that the node does not advertise its services.
+    // Default is empty to indicate that the node does not advertise its services.
     PublicAddr: "...",
 
     // An Ed25519 secret key that uniquely identifies this node.
@@ -354,9 +354,10 @@ static = "config.toml"
 nocache = true
 
 # The route below takes an URL route parameter ':id', and includes it
-# in a request sent to any Flatend node we know that advertises themselves
-# of handling the service 'a', 'b', or 'c'. The HTTP request body, query parameters,
-# and headers are additionally sent to the node.
+# in a request sent to any Flatend node we know that advertises
+# themselves of handling the service 'a', 'b', or 'c'. The HTTP
+# request body, query parameters, and headers are additionally
+# sent to the node.
 
 [[http.routes]]
 path = "POST /:id"

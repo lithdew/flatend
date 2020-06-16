@@ -106,6 +106,10 @@ read = "10s" # HTTP request read timeout. Default is 10s.
 read_header = "10s" # HTTP request header read timeout. Default is 10s.
 idle = "10s" # Idle connection timeout. Default is 10s.
 write = "10s" # HTTP response write timeout. Default is 10s.
+shutdown = "10s" # Graceful shutdown timeout. Default is 10s.
+
+[http.min]
+body_size = 1048576 # Min HTTP request body size in bytes.
 
 [http.max]
 header_size = 1048576 # Max HTTP request header size in bytes.

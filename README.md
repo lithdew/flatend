@@ -39,7 +39,7 @@ At the end of the day, your microservices are just functions in Flatend.
 
 Is your single behemoth microservice eating up your resources? Split it up into two functions and run one of the functions on another server without any downtime or networking hassle.
 
-Running multiple projects and want to reuse your code? Maintain one single authentication microservice with Flatend, knowing that it will interact well with microservices across all your projects.
+Running multiple projects and want to reuse your code? Package it up as yet another microservice with Flatend, and have it seamlessly interact with all of your projects.
 
 As a matter of fact, one thing I find overly common is rewriting HTTP and websocket server/routing/middleware code over and over again. Flatend comes pre-packaged with a highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
 

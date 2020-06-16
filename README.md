@@ -178,12 +178,12 @@ In this case, we'll just reply to the request with "Hello world!".
 
 Take note that `ctx: Context` is designed to be a NodeJS Duplex stream with a few extra properties and helper methods attached to it. A few rules to consider when writing functions in Flatend are:
 
-- The headers associated to an incoming request may be accessed via `ctx.headers`.
 - Upon the first write of response data towards request via a `Context`, all headers are dispatched to the requester. This implies that after the first write, no more headers may be set and dispatched to the requester.
-- All data that is written into `ctx` is split and sent as encrypted chunks of 2048 bytes.
 - A handler must close a `Context`  to signal that a response has fully been written out by calling `ctx.end()`.
+- All data that is written into `ctx` is split and sent as encrypted chunks of 2048 bytes.
+- Streams, such as `fs.createFileStream(path: string)`, may be piped into a `ctx` as a response. 
 - Any errors thrown in a handler are caught and sent as a JSON response to the requester.
-- Streams, such as the contents of a file streamed through `fs.createFileStream(path: string)`, may be piped as a response body into a `ctx`. 
+- The headers associated to an incoming request may be accessed via `ctx.headers`.
 
 The helper methods exposed in a `ctx: Context` are:
 

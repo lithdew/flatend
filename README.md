@@ -57,7 +57,7 @@ Microservices that are able to be discovered have public/private keys that are E
 
 The session handshake protocol is well-documented [here](https://github.com/lithdew/monte).
 
-## Quickstart (NodeJS)
+## Quickstart
 
 ### Setup
 
@@ -82,13 +82,11 @@ Based on the configuration above, Flatend will create a HTTP server listening on
 
 The configuration above will also have Flatend accept and transmit data to other Flatend microservices at 127.0.0.1:9000.
 
-### Hello World
-
 Now, let's write our first microservice.
 
-For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer.
+### NodeJS
 
-Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
+For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer. Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
 
 ```typescript
 import {Context} from "flatend";
@@ -98,7 +96,7 @@ const helloWorld = (ctx: Context) => ctx.send("Hello world!");
 
 In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` in this case is a NodeJS Duplex stream which you may pipe data into and out of, with header data from our HTTP microservice accessible at `ctx.headers`.
 
-Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at 127.0.0.1:9000.
+Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
 
 ```typescript
 import {Node, Context} from "flatend";
@@ -116,4 +114,51 @@ main().catch(err => console.error(err));
 
 Run your NodeJS program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
 
-There you have it; wasn't that easy :).
+### Go
+
+Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
+
+```go
+package main
+
+import "github.com/lithdew/flatend"
+
+func helloWorld(ctx *flatend.Context) {
+    ctx.Write([]byte("Hello world!"))
+}
+```
+
+In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` has a few other goodies, such as the request body `ctx.Body` as an `io.ReadCloser`, and request headers `ctx.Headers` as a `map[string]string`.
+
+Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
+
+```go
+package main
+
+import (
+	"github.com/lithdew/flatend"
+	"os"
+	"os/signal"
+)
+
+func helloWorld(ctx *flatend.Context) {
+    ctx.Write([]byte("Hello world!"))
+}
+
+func main() {
+	node := &flatend.Node{
+		Services: map[string]flatend.Handler{
+			"hello_world": helloWorld,
+		},
+	}
+	node.Start("127.0.0.1:9000")
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	<-ch
+
+	node.Shutdown()
+}
+```
+
+Run your Go program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".

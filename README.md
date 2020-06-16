@@ -80,7 +80,7 @@ $ ./flatend -c config.toml
 
 Based on the configuration above, Flatend will create a HTTP server listening on port 3000, serving a single route `GET /hello` which will route requests to the service named `hello_world`.
 
-The configuration above will also have Flatend accept and transmit data to other Flatend microservices at 127.0.0.1:9000.
+The configuration above will also have Flatend accept and transmit data to other Flatend microservices at `127.0.0.1:9000`.
 
 Now, let's write our first microservice.
 

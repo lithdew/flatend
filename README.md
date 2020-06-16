@@ -55,7 +55,7 @@ The configuration above will also start up Flatend's pre-packaged production-rea
 
 With the configuration above in this case, any GET requests to /hello will be forwarded to any other Flatend nodes that advertise themselves willing to handle the service `hello_world`.
 
-HTTPS support is also available via LetsEncrypt. The requirements for enabling HTTPS are that you:
+HTTPS support is also available via [LetsEncrypt](https://letsencrypt.org/). The requirements for enabling HTTPS are that you:
 
 1. have a domain registered, and
 2. have ports 80 and 443 open and available.
@@ -73,13 +73,13 @@ path = "GET /hello"
 service = "hello_world"
 ```
 
-Afterwards, simply run the command below and watch your first Flatend node come into life:
+Afterwards, simply run the command below and watch your first Flatend node come to life:
 
 ```shell
 $ ./flatend -c config.toml
 ```
 
-Now, let's write our first Flatend microservice :).
+Now, let's write our first Flatend microservice.
 
 ### Go
 

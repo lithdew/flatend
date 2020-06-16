@@ -23,11 +23,11 @@ Write functions in your favorite language, using your favorite tools and platfor
 
 If you're like me, you dream of spending only 5$ a month to leave your product/service sustaining thousands of customers and requests per second. At this golden age of SaaS' and serverless and Docker containers and low-code tools and configuration hell, that dream is slowly starting to fade away.
 
-Flatend uses the battle-tested p2p overlay networking protocol Kademlia to give you the building blocks necessary to achieve this dream with as much flexibility and as little code as possible.
+Flatend uses the battle-tested p2p overlay networking protocol Kademlia to give you the building blocks necessary to achieve this dream with as much flexibility and as little code as possible. With Kademlia, microservices built with Flatend come with service discovery, load balancing, routing, and fully-encrypted industrial-grade end-to-end encryption built in.
 
-With Kademlia, microservices built with Flatend come with service discovery, load balancing, routing, and fully-encrypted industrial-grade end-to-end encryption built in. All of that without the rigor of configuring Kubernetes/Istio/Consul over and over again.
+All of that without the rigor of configuring Kubernetes/Istio/Consul over and over again. Of course though, if you love Kubernetes/Istio/Consul, then use it with Flatend. Run your Flatend services in Docker containers, on Kubernetes, or on AWS hassle-free.
 
-Of course, if you love Kubernetes/Istio/Consul, then use it with Flatend. Run your Flatend services in Docker containers, on Kubernetes, or on AWS hassle-free. Either way, Flatend is as minimal as it gets for you to be able to make the most out of your single 2$/month bare-metal server, or fleet of 10,000$/month cloud instances.
+Either way, Flatend is as minimal as it gets for you to be able to make the most out of your single 2$/month bare-metal server, or fleet of 10,000$/month cloud instances.
 
 ### Production-ready from the start.
 

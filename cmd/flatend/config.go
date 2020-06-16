@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	Addr string
 	HTTP []ConfigHTTP
 }
 

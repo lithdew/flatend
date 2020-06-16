@@ -12,7 +12,7 @@ async function main() {
         ctx.json(JSON.parse(body.toString("utf8")));
     });
 
-    await node.dial("0.0.0.0:9000");
+    await node.dial("127.0.0.1:9000");
 }
 
 main().catch(err => console.error(err));

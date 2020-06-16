@@ -7,6 +7,7 @@ import (
 	"github.com/lithdew/kademlia"
 	"github.com/lithdew/monte"
 	"io"
+	"log"
 	"math"
 	"net"
 	"sync"
@@ -171,7 +172,7 @@ func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
 
 	addr := provider.Addr()
 
-	fmt.Printf("%s has disconnected from you. Services: %s\n", addr, provider.Services())
+	log.Printf("%s has disconnected from you. Services: %s", addr, provider.Services())
 
 	n.clientsLock.Lock()
 	_, exists := n.clients[addr]
@@ -197,7 +198,7 @@ func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
 
 			duration := b.Duration()
 
-			fmt.Printf("Trying to reconnect to %s. Sleeping for %s.\n", addr, duration)
+			log.Printf("Trying to reconnect to %s. Sleeping for %s.", addr, duration)
 			time.Sleep(duration)
 		}
 	}()
@@ -227,7 +228,7 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 		// register the microservice if it hasn't been registered before
 
 		provider := n.providers.register(ctx.Conn(), packet.ID, packet.Services, false)
-		fmt.Printf("%s has connected to you. Services: %s\n", provider.Addr(), provider.Services())
+		log.Printf("%s has connected to you. Services: %s", provider.Addr(), provider.Services())
 
 		// always reply back with what services we provide, and our
 		// id if we want to publicly advertise our microservice
@@ -432,7 +433,7 @@ func (n *Node) Probe(addr string) error {
 		n.providers.register(conn, packet.ID, packet.Services, true)
 	}
 
-	fmt.Printf("You are now connected to %s. Services: %s\n", addr, packet.Services)
+	log.Printf("You are now connected to %s. Services: %s", addr, packet.Services)
 
 	return nil
 }

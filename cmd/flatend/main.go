@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/caddyserver/certmagic"
 	"github.com/julienschmidt/httprouter"
@@ -16,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -39,7 +39,7 @@ func main() {
 	var bindPort uint16
 
 	pflag.StringVarP(&configPath, "config", "c", "config.toml", "path to config file")
-	pflag.IPVarP(&bindHost, "host", "h", net.ParseIP("0.0.0.0"), "bind host")
+	pflag.IPVarP(&bindHost, "host", "h", net.ParseIP("127.0.0.1"), "bind host")
 	pflag.Uint16VarP(&bindPort, "port", "p", 9000, "bind port")
 	pflag.Parse()
 
@@ -50,12 +50,26 @@ func main() {
 	check(toml.Unmarshal(buf, &cfg))
 	check(cfg.Validate())
 
+	if cfg.Addr != "" {
+		host, port, err := net.SplitHostPort(cfg.Addr)
+		check(err)
+
+		bindHost = net.ParseIP(host)
+
+		{
+			port, err := strconv.ParseUint(port, 10, 16)
+			check(err)
+
+			bindPort = uint16(port)
+		}
+	}
+
 	addr := flatend.Addr(bindHost, bindPort)
 
 	node := &flatend.Node{PublicAddr: addr}
 	check(node.Start())
 
-	fmt.Printf("Listening for microservices on %s.\n", addr)
+	log.Printf("Listening for microservices on %s.", addr)
 
 	defer node.Shutdown()
 

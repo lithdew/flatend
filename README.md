@@ -64,7 +64,7 @@ The session handshake protocol is well-documented [here](https://github.com/lith
 Create a new `config.toml`, paste the following in, and run the command below.
 
 ```toml
-addr = ":9000"
+addr = "127.0.0.1:9000"
 
 [[http]]
 addr = ":3000"
@@ -106,7 +106,7 @@ const helloWorld = (ctx: Context) => ctx.send("Hello world!");
 async function main() {
     const node = new Node();
     node.register("hello_world", helloWorld);
-    await node.dial("0.0.0.0:3000");
+    await node.dial("127.0.0.1:9000");
 }
 
 main().catch(err => console.error(err));

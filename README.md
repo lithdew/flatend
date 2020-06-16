@@ -161,7 +161,16 @@ func helloWorld(ctx *flatend.Context) {
 }
 ```
 
-In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` has a few other goodies, such as the request body `ctx.Body` as an `io.ReadCloser`, and request headers `ctx.Headers` as a `map[string]string`.
+In this case, we'll just reply to the request with "Hello world!".
+
+Take note though that `ctx *flatend.Context` implements the `io.Writer`, and exposes the request body and headers as an `io.ReadCloser` and `map[string]string`  respectively. A few rules to consider when writing functions in Flatend are:
+
+- The headers associated to an incoming request may be accessed via `ctx.Headers`.
+- The body of a request may be accessed via `ctx.Body`, which is an `io.ReadCloser`. It is advised to wrap the body with an `io.LimitedReader`, or to timeout reading from the body, as the body of a request is unbounded.
+- Upon the first call to `ctx.Write`, all response headers written via `ctx.WriteHeader` are dispatched to the requester. This implies that after the first write, no more headers may be written and dispatched to the requester.
+- All data that is written is split and sent as encrypted chunks of 2048 bytes.
+- The very moment the function returns, the response to a request is considered to be fully written.
+- Any panics in a function are not caught.
 
 Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
 
@@ -195,17 +204,17 @@ func main() {
 }
 ```
 
-Run your Go program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
+Run your Go program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!". Tinker around restarting either the Go program or the HTTPS server, and notice the Go program automatically reconnecting to the HTTP server.
 
 ### NodeJS
+
+For the following quickstart guide, I will be using TypeScript. However, any flavor of JavaScript will very much work here in principal, so feel free to use pure JavaScript ES6 as well for example.
 
 First, add `flatend` as a dependency to your project using npm/yarn.
 
 ```shell
 $ npm install flatend
 ```
-
-For the following steps I will be using TypeScript, though use whichever flavor of JavaScript you prefer.
 
 Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
 
@@ -218,7 +227,22 @@ const helloWorld = (ctx: Context) => {
 }
 ```
 
-In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` in this case is a NodeJS Duplex stream which you may pipe data into and out of, with header data from our HTTP microservice accessible at `ctx.headers`.
+In this case, we'll just reply to the request with "Hello world!".
+
+Take note that `ctx: Context` is designed to be a NodeJS Duplex stream with a few extra properties and helper methods attached to it. A few rules to consider when writing functions in Flatend are:
+
+- The headers associated to an incoming request may be accessed via `ctx.headers`.
+- Upon the first write of response data towards request via a `Context`, all headers are dispatched to the requester. This implies that after the first write, no more headers may be set and dispatched to the requester.
+- All data that is written into `ctx` is split and sent as encrypted chunks of 2048 bytes.
+- A handler must close a `Context`  to signal that a response has fully been written out by calling `ctx.end()`.
+- Any errors thrown in a handler are caught and sent as a JSON response to the requester.
+- Streams, such as the contents of a file streamed through `fs.createFileStream(path: string)`, may be piped as a response body into a `ctx`. 
+
+The helper methods exposed in a `ctx: Context` are:
+
+- `ctx.send(data: string | Uint8Array | Buffer)` writes `data` as a response, and closes `ctx`.
+- `ctx.json(data: object)` encodes `data` into a JSON string, writes it as a response, and closes `ctx`.
+- `await ctx.body({limit?: 65536})` reads the request body of `ctx`, with an optimal maximum size limit pre-configured to 65536 bytes. It throws an error if the size limit is exceeded.
 
 Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
 
@@ -239,7 +263,7 @@ async function main() {
 main().catch(err => console.error(err));
 ```
 
-Run your NodeJS program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
+Run your NodeJS program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!". Tinker around restarting either the NodeJS program or the HTTPS server, and notice the NodeJS program automatically reconnecting to the HTTP server.
 
 ## Design
 

@@ -17,61 +17,6 @@ Write functions in your favorite language, using your favorite tools and platfor
 
 > "It's like low-code, but for developers without the vendor-lockin." Kenta Iwasaki. June 16, 2020
 
-## Quickstart
-
-### NodeJS
-
-###
-
-Create a new `config.toml`, paste the following in, and run the command below.
-
-```toml
-addr = ":9000"
-
-[[http]]
-addr = ":3000"
-
-[[http.routes]]
-path = "GET /hello"
-service = "hello_world"
-```
-
-```shell
-$ ./flatend -c config.toml
-```
-
-This will create a HTTP server listening on port 3000, serving a single route `GET /hello` which will route requests to the service named `hello_world`. This will also open up the port 9000, which Flatend microservices may connect to in order to provide/receive services.
-
-Now, let's write our first microservice. For the following steps I will be using TypeScript, though use whatever language of JavaScript you prefer.
-
-Let's make a NodeJS service named `hello_world` that will respond to any service requests with "Hello world!".
-
-```typescript
-import {Context} from "flatend";
-
-const helloWorld = (ctx: Context) => ctx.send("Hello world!");
-```
-
-Now, we need to connect our `helloWorld` function to our HTTP server.
-
-```typescript
-import {Node, Context} from "flatend";
-
-const helloWorld = (ctx: Context) => ctx.send("Hello world!");
-
-async function main() {
-    const node = new Node();
-    node.register("hello_world", helloWorld);
-    await node.dial("0.0.0.0:3000");
-}
-
-main().catch(err => console.error(err));
-``` 
-
-Now, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!". There you have it, your first Flatend microservice.
-
-You can imagine initializing and sending data from SQLite, MySQL, PostgreSQL, or MongoDB, running CRON jobs, etc. using the exact same setup.
-
 ## Design
 
 ### Keep it simple, be flexible.
@@ -111,3 +56,60 @@ Nonces used for encrypting/decrypting messages are unsigned big-endian 64-bit in
 Microservices that are able to be discovered have public/private keys that are Ed25519. It is optional for microservices to identify themselves under a public key to provide services within a Flatend network.
 
 The session handshake protocol is well-documented [here](https://github.com/lithdew/monte).
+
+## Quickstart (NodeJS)
+
+### Setup
+
+Create a new `config.toml`, paste the following in, and run the command below.
+
+```toml
+addr = ":9000"
+
+[[http]]
+addr = ":3000"
+
+[[http.routes]]
+path = "GET /hello"
+service = "hello_world"
+```
+
+```shell
+$ ./flatend -c config.toml
+```
+
+This will create a HTTP server listening on port 3000, serving a single route `GET /hello` which will route requests to the service named `hello_world`.
+
+This will also open up the port 9000, which Flatend microservices may connect to in order to provide/receive services.
+
+### Hello World
+
+Now, let's write our first microservice. For the following steps I will be using TypeScript, though use whatever language of JavaScript you prefer.
+
+Let's make a NodeJS service named `hello_world` that will respond to any service requests with "Hello world!".
+
+```typescript
+import {Context} from "flatend";
+
+const helloWorld = (ctx: Context) => ctx.send("Hello world!");
+```
+
+Now, we need to connect our `helloWorld` function to our HTTP server.
+
+```typescript
+import {Node, Context} from "flatend";
+
+const helloWorld = (ctx: Context) => ctx.send("Hello world!");
+
+async function main() {
+    const node = new Node();
+    node.register("hello_world", helloWorld);
+    await node.dial("0.0.0.0:3000");
+}
+
+main().catch(err => console.error(err));
+``` 
+
+Now, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!". There you have it, your first Flatend microservice.
+
+You can imagine initializing and sending data from SQLite, MySQL, PostgreSQL, or MongoDB, running CRON jobs, etc. using the exact same setup.

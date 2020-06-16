@@ -43,11 +43,14 @@ func main() {
 	pflag.Uint16VarP(&bindPort, "port", "p", 9000, "bind port")
 	pflag.Parse()
 
-	buf, err := ioutil.ReadFile(configPath)
-	check(err)
-
 	var cfg Config
-	check(toml.Unmarshal(buf, &cfg))
+
+	buf, err := ioutil.ReadFile(configPath)
+	if err == nil {
+		check(toml.Unmarshal(buf, &cfg))
+	} else {
+		log.Printf("Unable to find a configuration file '%s'.", configPath)
+	}
 	check(cfg.Validate())
 
 	if cfg.Addr != "" {
@@ -69,7 +72,7 @@ func main() {
 	node := &flatend.Node{PublicAddr: addr}
 	check(node.Start())
 
-	log.Printf("Listening for microservices on %s.", addr)
+	log.Printf("Listening for microservices on '%s'.", addr)
 
 	defer node.Shutdown()
 
@@ -182,7 +185,7 @@ func main() {
 					ln, err := tls.Listen("tcp", bindAddr, magic.TLSConfig())
 					check(err)
 
-					log.Printf("Accepting HTTPS at: %s", ln.Addr().String())
+					log.Printf("Listening for HTTPS on '%s'.", ln.Addr().String())
 
 					err = srv.Serve(ln)
 					if !errors.Is(err, http.ErrServerClosed) {
@@ -203,7 +206,7 @@ func main() {
 					ln, err := net.Listen("tcp", redirectAddr)
 					check(err)
 
-					log.Printf("Redirecting HTTP->HTTPS at: %s", ln.Addr().String())
+					log.Printf("Redirecting HTTP->HTTPS on '%s'.", ln.Addr().String())
 
 					err = redirect.Serve(ln)
 					if !errors.Is(err, http.ErrServerClosed) {
@@ -219,7 +222,7 @@ func main() {
 					ln, err := net.Listen("tcp", addr)
 					check(err)
 
-					log.Printf("Accepting HTTP at: %s", ln.Addr().String())
+					log.Printf("Listening for HTTP requests on '%s'.", ln.Addr().String())
 
 					err = srv.Serve(ln)
 					if !errors.Is(err, http.ErrServerClosed) {

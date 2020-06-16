@@ -84,7 +84,9 @@ service = "hello_world"
 $ ./flatend -c config.toml
 ```
 
-In the configuration above, Flatend will create a HTTP server listening on port 3000. Any HTTP requests that matches the route `GET /hello` will be routed to be handled by the service `hello_world`. Flatend will also listen from and transmit to other Flatend microservices at the address `127.0.0.1:9000`.
+In the configuration above, Flatend will create a HTTP server listening on port 3000. Any HTTP requests that matches the route `GET /hello` will be routed to be handled by the service `hello_world`.
+
+Flatend will also listen from and transmit to other Flatend microservices at the address `127.0.0.1:9000`.
 
 Now, let's write our first microservice.
 

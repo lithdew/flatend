@@ -84,36 +84,6 @@ The configuration above will also have Flatend accept and transmit data to other
 
 Now, let's write our first microservice.
 
-### NodeJS
-
-For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer. Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
-
-```typescript
-import {Context} from "flatend";
-
-const helloWorld = (ctx: Context) => ctx.send("Hello world!");
-```
-
-In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` in this case is a NodeJS Duplex stream which you may pipe data into and out of, with header data from our HTTP microservice accessible at `ctx.headers`.
-
-Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
-
-```typescript
-import {Node, Context} from "flatend";
-
-const helloWorld = (ctx: Context) => ctx.send("Hello world!");
-
-async function main() {
-    const node = new Node();
-    node.register("hello_world", helloWorld);
-    await node.dial("127.0.0.1:9000");
-}
-
-main().catch(err => console.error(err));
-``` 
-
-Run your NodeJS program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
-
 ### Go
 
 Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
@@ -162,3 +132,33 @@ func main() {
 ```
 
 Run your Go program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
+
+### NodeJS
+
+For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer. Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
+
+```typescript
+import {Context} from "flatend";
+
+const helloWorld = (ctx: Context) => ctx.send("Hello world!");
+```
+
+In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` in this case is a NodeJS Duplex stream which you may pipe data into and out of, with header data from our HTTP microservice accessible at `ctx.headers`.
+
+Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
+
+```typescript
+import {Node, Context} from "flatend";
+
+const helloWorld = (ctx: Context) => ctx.send("Hello world!");
+
+async function main() {
+    const node = new Node();
+    node.register("hello_world", helloWorld);
+    await node.dial("127.0.0.1:9000");
+}
+
+main().catch(err => console.error(err));
+``` 
+
+Run your NodeJS program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".

@@ -166,7 +166,8 @@ In this case, we'll just reply to the request with "Hello world!".
 Take note though that `ctx *flatend.Context` implements the `io.Writer`, and exposes the request body and headers as an `io.ReadCloser` and `map[string]string`  respectively. A few rules to consider when writing functions in Flatend are:
 
 - The headers associated to an incoming request may be accessed via `ctx.Headers`.
-- The body of a request may be accessed via `ctx.Body`, which is an `io.ReadCloser`. It is advised to wrap the body with an `io.LimitedReader`, or to timeout reading from the body, as the body of a request is unbounded.
+- The body of a request may be accessed via `ctx.Body`, which is an `io.ReadCloser`.
+- It is advised to wrap the body with an `io.LimitedReader`, or to timeout reading from the body, as the length of the body of a request is unbounded.
 - Upon the first call to `ctx.Write`, all response headers written via `ctx.WriteHeader` are dispatched to the requester. This implies that after the first write, no more headers may be written and dispatched to the requester.
 - All data that is written is split and sent as encrypted chunks of 2048 bytes.
 - The very moment the function returns, the response to a request is considered to be fully written.

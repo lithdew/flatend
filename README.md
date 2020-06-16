@@ -1,12 +1,12 @@
 <div align="center">
-<img src="https://lh3.googleusercontent.com/pw/ACtC-3c6eZvrCLM-wV5UkBn8JZVBf-C-lAJ7XmCLgX5Gz4tCdbhCtREUw_o2bsYIbibU1fCk5A43h_9dBSV7y9hwtv9iIifKVk6QkGEGXYV1E1Kd0jyH62k8zZBsbbT3JSSfGRYW660frbzTO0wtTR4FQECl=s599-no" width="450" height="auto"/>
+<img src="https://lh3.googleusercontent.com/pw/ACtC-3c6eZvrCLM-wV5UkBn8JZVBf-C-lAJ7XmCLgX5Gz4tCdbhCtREUw_o2bsYIbibU1fCk5A43h_9dBSV7y9hwtv9iIifKVk6QkGEGXYV1E1Kd0jyH62k8zZBsbbT3JSSfGRYW660frbzTO0wtTR4FQECl=s599-no" width="200" height="auto"/>
 </div>
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](LICENSE)
 [![Discord Chat](https://img.shields.io/discord/697002823123992617)](https://discord.gg/HZEbkeQ)
 [![Sourcegraph](https://sourcegraph.com/github.com/lithdew/flatend/-/badge.svg)](https://sourcegraph.com/github.com/lithdew/flatend?badge)
 
-[![Go version]()](https://pkg.go.dev/github.com/lithdew/flatend)
+[![Go version](https://img.shields.io/github/go-mod/go-version/lithdew/flatend)](https://pkg.go.dev/github.com/lithdew/flatend)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lithdew/flatend)
 [![GoDoc](https://godoc.org/github.com/lithdew/flatend?status.svg)](http://godoc.org/github.com/lithdew/flatend)
 
@@ -387,9 +387,9 @@ services = ["a", "b", "c"]
 
 ## Showcase
 
-[![Mask Demand Calculator](https://lh3.googleusercontent.com/pw/ACtC-3e7uWQGKd7_TV_cqSL89-CX15-fPr7bmfbSIbuteIlNgbqy2lLWr0ITNMmd-nVWin9tWwON-jpdjwWarFeAU3QyPDh4uKmcPBqa8PYoGPviIfGAS1XZ3bVvYnAoW7q3lYlEk9EQIvaLmoSMf4Z7_hTX=s465-no)](https://wars-mask.surge.sh/en)
+<a href="https://wars-mask.surge.sh/en" target="_blank"><img src="https://lh3.googleusercontent.com/pw/ACtC-3e7uWQGKd7_TV_cqSL89-CX15-fPr7bmfbSIbuteIlNgbqy2lLWr0ITNMmd-nVWin9tWwON-jpdjwWarFeAU3QyPDh4uKmcPBqa8PYoGPviIfGAS1XZ3bVvYnAoW7q3lYlEk9EQIvaLmoSMf4Z7_hTX=s465-no" width="200" height="auto"/></a>
 
-**Mask Demand Calculator** - An information site for calculating the masks your household needs. Serving RSS feeds with Flatend to more than 200K+ site visitors.
+[**Mask Demand Calculator**](https://wars-mask.surge.sh/en) - An information site for calculating the masks your household needs. Serving RSS feeds with Flatend to more than 200K+ site visitors.
 
 ## Roadmap
 

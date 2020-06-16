@@ -60,14 +60,9 @@ The session handshake protocol is well-documented [here](https://github.com/lith
 ## Installation
 
 ```shell
-$ curl -sLJO https://github.com/lithdew/flatend/releases/download/v0.0.1/flatend_0.0.1_linux_x86_64.tar.gz
-
-$ tar xvzf flatend_0.0.1_linux_x86_64.tar.gz
-LICENSE
-README.md
-flatend
-
-$ ./flatend
+VERSION=$(curl -s https://github.com/lithdew/flatend/releases/latest/download 2>&1 | grep -Po [0-9]+\.[0-9]+\.[0-9]+)
+wget https://github.com/lithdew/flatend/releases/download/v$VERSION/flatend_$VERSION\_linux_x86_64.tar.gz
+tar xvzf flatend_$VERSION\_linux_x86_64.tar.gz
 ```
 
 ## Quickstart

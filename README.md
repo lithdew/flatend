@@ -28,8 +28,11 @@ Write functions in your favorite language, using your favorite tools and platfor
     * [Production-ready from the start.](#production-ready-from-the-start)
     * [Zero vendor lock-in and barriers.](#zero-vendor-lock-in-and-barriers)
     * [Security as a service.](#security-as-a-service)
+- [Options](#options)
+    * [Go](#go-1)
+    * [NodeJS](#nodejs-1)
+    * [HTTP Server](#http-server)
 - [License](#license)
-  
 ## Installation
 
 Head over to the [Releases](https://github.com/lithdew/flatend/releases) section and download the latest version of Flatend for your platform.
@@ -78,64 +81,6 @@ Afterwards, simply run the command below and watch your first Flatend node come 
 
 ```shell
 $ ./flatend -c config.toml
-```
-
-A full list of configurable options for your Flatend HTTP server is provided below.
-
-```toml
-[[http]]
-https = true # Enable/disable HTTPS support. Default is false.
-
-# Domain(s) for HTTPS support. Ignored if https = false.
-domain = "lithdew.net"
-domains = ["a.lithdew.net", "b.lithdew.net"]
-
-# Addresses to serve HTTP requests on.
-# Default is :80 if https = false, and :443 if https = true.
-
-addr = ":3000"
-addrs = [":3000", ":4000", "127.0.0.1:9000"]
-
-# Remove trailing slashes in HTTP route path? Default is true.
-redirect_trailing_slash = true
-
-# Redirect to the exact configured HTTP route path? Default is true.
-redirect_fixed_path = true
-
-[http.timeout]
-read = "10s" # HTTP request read timeout. Default is 10s.
-read_header = "10s" # HTTP request header read timeout. Default is 10s.
-idle = "10s" # Idle connection timeout. Default is 10s.
-write = "10s" # HTTP response write timeout. Default is 10s.
-shutdown = "10s" # Graceful shutdown timeout. Default is 10s.
-
-[http.min]
-body_size = 1048576 # Min HTTP request body size in bytes.
-
-[http.max]
-header_size = 1048576 # Max HTTP request header size in bytes.
-body_size = 1048576 # Max HTTP request body size in bytes.
-
-# The route below serves the contents of the file 'config.toml' upon
-# recipient of a 'GET' request at path '/'. The contents of the file
-# are instructed to not be cached to the requester.
-
-# By default, caching for static files that are served is enabled.
-# Instead of a file, a directory may be statically served as well.
-
-[[http.routes]]
-path = "GET /"
-static = "config.toml"
-nocache = true
-
-# The route below takes an URL route parameter ':id', and includes it
-# in a request sent to any Flatend node we know that advertises themselves
-# of handling the service 'a', 'b', or 'c'. The HTTP request body, query parameters,
-# and headers are additionally sent to the node.
-
-[[http.routes]]
-path = "POST /:id"
-services = ["a", "b", "c"]
 ```
 
 Now, let's write our first Flatend microservice.
@@ -286,7 +231,7 @@ Is your single behemoth microservice eating up your resources? Split it up into 
 
 Running multiple projects and want to reuse your code? Package it up as yet another microservice with Flatend, and have it seamlessly interact with all of your projects.
 
-As a matter of fact, one thing I find overly common is rewriting HTTP and websocket server/routing/middleware code over and over again. Flatend comes pre-packaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
+As a matter of fact, one thing I find overly common is rewriting HTTP and WebSocket server/routing/middleware code over and over again. Flatend comes pre-packaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
 
 ### Zero vendor lock-in and barriers.
 
@@ -305,6 +250,102 @@ Nonces used for encrypting/decrypting messages are unsigned big-endian 64-bit in
 Microservices that are able to be discovered have public/private keys that are Ed25519. It is optional for microservices to identify themselves under a public key to provide services within a Flatend network.
 
 The session handshake protocol is well-documented [here](https://github.com/lithdew/monte).
+
+## Options
+
+By default, Flatend comes pre-packaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
+
+More pre-packaged services are planned to be coming out soon from the Flatend team for creating production-ready WebSocket, TCP, and gRPC APIs out of Flatend services.
+
+All of these prepackaged services are fully configurable with the list of configurable values specified below. Apart from configuring these services, services created using Flatend APIs may also be configured as shown below.
+
+### Go
+
+A Flatend node may be configured like so:
+
+```go
+node := &flatend.Node{
+    PublicAddr: "...", // The public address to advertise to other nodes that may want to use this nodes' services. Default is empty to indicate that the node does not advertise its services.
+    SecretKey: kademlia.SecretKey{...}, // An Ed25519 secret key that uniquely identifies this node.
+    BindAddrs: []flatend.BindFunc{ // Open this node up to other Flatend nodes on a specified TCP address. Default is empty to indicate that this node only caters its services to other Flatend nodes it manually connects to.
+        flatend.BindAny(), // Randomly-selected open port.
+        flatend.BindTCP(":3000"), // Specified IPv4/IPv6 address.
+        flatend.BindTCPv4("127.0.0.1:3000"), // Specified IPv4 address.
+        flatend.BindTCPv6("[::1]:3000"), // Specified IPv6 addresss
+    }
+}
+```
+
+### NodeJS
+
+A Flatend node may be configured like so:
+
+```typescript
+node := new Node({
+    id: new ID(publicKey, host, port), // Ed25519 public key, IPv4/IPv6 host, and unsigned 16-bit integer port.
+    keys: nacl.sign.keyPair(), // Ed25519 keypair that is unique to this node.
+})
+```
+
+### HTTP Server
+
+The pre-packaged HTTP server comes bundled with several configurable options in `.toml`:
+
+```toml
+[[http]]
+https = true # Enable/disable HTTPS support. Default is false.
+
+# Domain(s) for HTTPS support. Ignored if https = false.
+domain = "lithdew.net"
+domains = ["a.lithdew.net", "b.lithdew.net"]
+
+# Addresses to serve HTTP requests on.
+# Default is :80 if https = false, and :443 if https = true.
+
+addr = ":3000"
+addrs = [":3000", ":4000", "127.0.0.1:9000"]
+
+# Remove trailing slashes in HTTP route path? Default is true.
+redirect_trailing_slash = true
+
+# Redirect to the exact configured HTTP route path? Default is true.
+redirect_fixed_path = true
+
+[http.timeout]
+read = "10s" # HTTP request read timeout. Default is 10s.
+read_header = "10s" # HTTP request header read timeout. Default is 10s.
+idle = "10s" # Idle connection timeout. Default is 10s.
+write = "10s" # HTTP response write timeout. Default is 10s.
+shutdown = "10s" # Graceful shutdown timeout. Default is 10s.
+
+[http.min]
+body_size = 1048576 # Min HTTP request body size in bytes.
+
+[http.max]
+header_size = 1048576 # Max HTTP request header size in bytes.
+body_size = 1048576 # Max HTTP request body size in bytes.
+
+# The route below serves the contents of the file 'config.toml' upon
+# recipient of a 'GET' request at path '/'. The contents of the file
+# are instructed to not be cached to the requester.
+
+# By default, caching for static files that are served is enabled.
+# Instead of a file, a directory may be statically served as well.
+
+[[http.routes]]
+path = "GET /"
+static = "config.toml"
+nocache = true
+
+# The route below takes an URL route parameter ':id', and includes it
+# in a request sent to any Flatend node we know that advertises themselves
+# of handling the service 'a', 'b', or 'c'. The HTTP request body, query parameters,
+# and headers are additionally sent to the node.
+
+[[http.routes]]
+path = "POST /:id"
+services = ["a", "b", "c"]
+```
 
 ## License
 

@@ -156,6 +156,7 @@ package main
 import "github.com/lithdew/flatend"
 
 func helloWorld(ctx *flatend.Context) {
+    ctx.WriteHeader("Content-Type", "text/plain; charset=utf-8")
     ctx.Write([]byte("Hello world!"))
 }
 ```
@@ -174,6 +175,7 @@ import (
 )
 
 func helloWorld(ctx *flatend.Context) {
+    ctx.WriteHeader("Content-Type", "text/plain; charset=utf-8")
     ctx.Write([]byte("Hello world!"))
 }
 
@@ -210,7 +212,10 @@ Let's write a function that describes how we want to handle incoming requests fo
 ```typescript
 import {Context} from "flatend";
 
-const helloWorld = (ctx: Context) => ctx.send("Hello world!");
+const helloWorld = (ctx: Context) => {
+    ctx.header("Content-Type", "text/plain; charset=utf-8");
+    ctx.send("Hello world!");
+}
 ```
 
 In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` in this case is a NodeJS Duplex stream which you may pipe data into and out of, with header data from our HTTP microservice accessible at `ctx.headers`.
@@ -220,7 +225,10 @@ Now, we need just need to register `helloWorld` as a handler for the service `he
 ```typescript
 import {Node, Context} from "flatend";
 
-const helloWorld = (ctx: Context) => ctx.send("Hello world!");
+const helloWorld = (ctx: Context) => {
+    ctx.header("Content-Type", "text/plain; charset=utf-8");
+    ctx.send("Hello world!");
+}
 
 async function main() {
     const node = new Node();

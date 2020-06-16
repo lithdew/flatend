@@ -90,8 +90,9 @@ https = true # Enable/disable HTTPS support.
 domain = "lithdew.net"
 domains = ["a.lithdew.net", "b.lithdew.net"]
 
-# Addresses to listen for HTTP requests on.
+# Addresses to serve HTTP requests on.
 # Default is :80 if https = false, and :443 if https = true.
+
 addr = ":3000"
 addrs = [":3000", ":4000", "127.0.0.1:9000"]
 

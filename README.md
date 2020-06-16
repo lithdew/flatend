@@ -41,19 +41,21 @@ Node.js v14 stable (14.4.0) or later.
 
 At the time being, **flatend** only supports NodeJS and Go. Support for Python and Deno is planned: [Join our Discord server](https://discord.gg/HZEbkeQ) to learn more.
 
-## First: Choose Your HTTP Server
+## Step 1: Choose Your HTTP Server
 
 Flatend as a protocol is framework-agnostic.
 
 We provide a prepackaged binary containing a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
 
+### Download Binary
+
 For convenience, you may directly [download](https://github.com/lithdew/flatend/releases) the binary for quickstart.
+
+### Build It Yourself
 
 Or, you could [build from source](#build-from-source).
 
-## Then: Quickstart
-
-[Download](https://github.com/lithdew/flatend/releases) the Flatend binary for your platform.
+## Step 2: Quickstart
 
 Create a new `config.toml`, and paste:
 

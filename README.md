@@ -37,7 +37,7 @@ Is your single behemoth microservice eating up your resources? Split it up into 
 
 Running multiple projects and want to reuse your code? Package it up as yet another microservice with Flatend, and have it seamlessly interact with all of your projects.
 
-As a matter of fact, one thing I find overly common is rewriting HTTP and websocket server/routing/middleware code over and over again. Flatend comes pre-packaged with a highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
+As a matter of fact, one thing I find overly common is rewriting HTTP and websocket server/routing/middleware code over and over again. Flatend comes pre-packaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
 
 ### Zero vendor lock-in and barriers.
 

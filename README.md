@@ -86,7 +86,7 @@ This will also open up the port 9000, which Flatend microservices may connect to
 
 Now, let's write our first microservice. For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer.
 
-Let's make a NodeJS service named `hello_world` that will respond to any service requests with "Hello world!".
+Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
 
 ```typescript
 import {Context} from "flatend";
@@ -94,7 +94,9 @@ import {Context} from "flatend";
 const helloWorld = (ctx: Context) => ctx.send("Hello world!");
 ```
 
-Now, we need to connect our `helloWorld` function to our HTTP server.
+In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` in this case is a NodeJS Duplex stream which you may pipe data into and out of, with header data from our HTTP microservice accessible at `ctx.headers`.
+
+Now, we need just need to register `helloWorld` to service `hello_world` for our HTTP server.
 
 ```typescript
 import {Node, Context} from "flatend";
@@ -110,6 +112,6 @@ async function main() {
 main().catch(err => console.error(err));
 ``` 
 
-Now, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
+Run your NodeJS program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
 
-There you have it, your first Flatend microservice.
+There you have it; wasn't that easy :).

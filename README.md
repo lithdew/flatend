@@ -66,6 +66,7 @@ Should you meet those requirements, modify your `config.toml` like so:
 addr = "127.0.0.1:9000"
 
 [[http]]
+https = true
 domain = "lithdew.net"
 
 [[http.routes]]

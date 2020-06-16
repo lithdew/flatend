@@ -17,13 +17,13 @@ Write functions in your favorite language, using your favorite tools and platfor
 
 > "It's like low-code, but for developers without the vendor-lockin." Kenta Iwasaki. June 16, 2020
 
-## Usage
+## Quickstart
 
 ### NodeJS
 
 ###
 
-Create a new `config.toml` and paste this in:
+Create a new `config.toml`, paste the following in, and run the command below.
 
 ```toml
 addr = ":9000"
@@ -36,15 +36,11 @@ path = "GET /hello"
 service = "hello_world"
 ```
 
-This will create a HTTP server listening on port 3000, serving a single route `GET /hello` which will route requests to the service named `hello_world`.
-
-This will also open up the port 9000, which Flatend microservices may connect to in order to provide/receive services.
-
-Run:
-
 ```shell
 $ ./flatend -c config.toml
 ```
+
+This will create a HTTP server listening on port 3000, serving a single route `GET /hello` which will route requests to the service named `hello_world`. This will also open up the port 9000, which Flatend microservices may connect to in order to provide/receive services.
 
 Now, let's write our first microservice. For the following steps I will be using TypeScript, though use whatever language of JavaScript you prefer.
 

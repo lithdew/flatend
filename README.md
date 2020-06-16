@@ -114,15 +114,20 @@ func main() {
 }
 ```
 
-Run
+Run the HTTP Server
 
 ```
 go run ./cmd/flatend
 ```
 
+Run the Go program
+```
+go run app.go
+```
+
 Visit `localhost:9000/hello`
 
-Restart either the Go program or the HTTPS server.
+Restart either the Go program or the HTTP server.
 
 Notice the Go program automatically reconnects to the HTTP server and vice versa.
 
@@ -176,17 +181,22 @@ async function main() {
 main().catch(err => console.error(err));
 ```
 
-Run
+Run the HTTP Server
 
 ```
 go run ./cmd/flatend
 ```
 
+Run the NodeJS program
+```
+npm start
+```
+
 Visit `localhost:9000/hello`
 
-Restart either the Go program or the HTTPS server.
+Restart either the NodeJS program or the HTTP server.
 
-Notice the Go program automatically reconnects to the HTTP server and vice versa.
+Notice the NodeJS program automatically reconnects to the HTTP server and vice versa.
 
 *Note*: `ctx: Context` is designed to be a NodeJS Duplex stream with a few extra properties and helper methods attached to it. A few rules to consider when writing functions in Flatend are:
 
@@ -203,9 +213,9 @@ The helper methods exposed in a `ctx: Context` are:
 - `ctx.json(data: object)` encodes `data` into a JSON string, writes it as a response, and closes `ctx`.
 - `await ctx.body({limit?: 65536})` reads the request body of `ctx`, with an optimal maximum size limit pre-configured to 65536 bytes. It throws an error if the size limit is exceeded.
 
-### config.toml Explained
+### `config.toml` Explained
 
-*Note*: As of v0.0.1, `config.toml` only supports `http` and `address` configuration.
+*Note*: As of v0.0.1, `config.toml` only supports `[[http]]` and address configuration.
 
 ```toml
 [[http]]

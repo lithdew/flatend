@@ -387,7 +387,7 @@ services = ["a", "b", "c"]
 
 ## Showcase
 
-<a href="https://wars-mask.surge.sh/en" target="_blank"><img src="https://lh3.googleusercontent.com/pw/ACtC-3e7uWQGKd7_TV_cqSL89-CX15-fPr7bmfbSIbuteIlNgbqy2lLWr0ITNMmd-nVWin9tWwON-jpdjwWarFeAU3QyPDh4uKmcPBqa8PYoGPviIfGAS1XZ3bVvYnAoW7q3lYlEk9EQIvaLmoSMf4Z7_hTX=s465-no" width="200" height="auto"/></a>
+<a href="https://wars-mask.surge.sh/en" target="_blank"><img src="https://lh3.googleusercontent.com/pw/ACtC-3e7uWQGKd7_TV_cqSL89-CX15-fPr7bmfbSIbuteIlNgbqy2lLWr0ITNMmd-nVWin9tWwON-jpdjwWarFeAU3QyPDh4uKmcPBqa8PYoGPviIfGAS1XZ3bVvYnAoW7q3lYlEk9EQIvaLmoSMf4Z7_hTX=s465-no" width="80" height="auto"/></a>
 
 [**Mask Demand Calculator**](https://wars-mask.surge.sh/en) - An information site for calculating the masks your household needs. Serving RSS feeds with Flatend to more than 200K+ site visitors.
 

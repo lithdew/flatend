@@ -167,7 +167,7 @@ Take note though that `ctx *flatend.Context` implements the `io.Writer`, and exp
 
 - The headers associated to an incoming request may be accessed via `ctx.Headers`.
 - The body of a request may be accessed via `ctx.Body`, which is an `io.ReadCloser`.
-- It is advised to wrap the body with an `io.LimitedReader`, or to timeout reading from the body, as the length of the body of a request is unbounded.
+- It is advised to wrap the body with an `io.LimitedReader` as the length of the body of a request is unbounded.
 - Upon the first call to `ctx.Write`, all response headers written via `ctx.WriteHeader` are dispatched to the requester. This implies that after the first write, no more headers may be written and dispatched to the requester.
 - All data that is written is split and sent as encrypted chunks of 2048 bytes.
 - The very moment the function returns, the response to a request is considered to be fully written.

@@ -10,6 +10,7 @@ import (
 	"github.com/lithdew/flatend"
 	"github.com/spf13/pflag"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -125,7 +126,7 @@ func main() {
 
 		if cfg.HTTPS {
 			magic := certmagic.NewDefault()
-			check(magic.ManageSync(addrs))
+			check(magic.ManageSync(cfg.GetDomains()))
 
 			acme := certmagic.NewACMEManager(magic, certmagic.DefaultACME)
 			srv.Handler = acme.HTTPChallengeHandler(srv.Handler)
@@ -162,8 +163,12 @@ func main() {
 				addr := addr
 
 				go func() {
-					ln, err := tls.Listen("tcp", net.JoinHostPort(addr, "443"), magic.TLSConfig())
+					bindAddr := addr
+
+					ln, err := tls.Listen("tcp", bindAddr, magic.TLSConfig())
 					check(err)
+
+					log.Printf("Accepting HTTPS at: %s", ln.Addr().String())
 
 					err = srv.Serve(ln)
 					if !errors.Is(err, http.ErrServerClosed) {
@@ -172,8 +177,19 @@ func main() {
 				}()
 
 				go func() {
-					ln, err := net.Listen("tcp", net.JoinHostPort(addr, "80"))
+					redirectAddr := addr
+
+					host, _, err := net.SplitHostPort(redirectAddr)
+					if err == nil {
+						redirectAddr = net.JoinHostPort(host, "80")
+					} else {
+						redirectAddr = net.JoinHostPort(redirectAddr, "80")
+					}
+
+					ln, err := net.Listen("tcp", redirectAddr)
 					check(err)
+
+					log.Printf("Redirecting HTTP->HTTPS at: %s", ln.Addr().String())
 
 					err = redirect.Serve(ln)
 					if !errors.Is(err, http.ErrServerClosed) {
@@ -184,9 +200,12 @@ func main() {
 		} else {
 			for _, addr := range addrs {
 				addr := addr
+
 				go func() {
 					ln, err := net.Listen("tcp", addr)
 					check(err)
+
+					log.Printf("Accepting HTTP at: %s", ln.Addr().String())
 
 					err = srv.Serve(ln)
 					if !errors.Is(err, http.ErrServerClosed) {

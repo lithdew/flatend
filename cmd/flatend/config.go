@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -35,6 +36,9 @@ func (d *Duration) UnmarshalText(text []byte) error {
 }
 
 type ConfigHTTP struct {
+	Domain  string
+	Domains []string
+
 	Addr  string
 	Addrs []string
 
@@ -63,14 +67,31 @@ type ConfigHTTP struct {
 	Routes []ConfigRoute
 }
 
+func (h ConfigHTTP) GetDomains() []string {
+	if h.Domain != "" {
+		return []string{h.Domain}
+	}
+	return h.Domains
+}
+
 func (h ConfigHTTP) GetAddrs() []string {
+	if len(h.Addrs) > 0 {
+		return h.Addrs
+	}
 	if h.Addr != "" {
 		return []string{h.Addr}
 	}
-	return h.Addrs
+	if h.HTTPS {
+		return []string{net.JoinHostPort("", "443")}
+	}
+	return []string{net.JoinHostPort("", "80")}
 }
 
 func (h ConfigHTTP) Validate() error {
+	if h.Domain != "" && h.Domains != nil {
+		return errors.New("'domain' and 'domains' cannot both be non-nil at the same time")
+	}
+
 	if h.Addr != "" && h.Addrs != nil {
 		return errors.New("'addr' and 'addrs' cannot both be non-nil at the same time")
 	}

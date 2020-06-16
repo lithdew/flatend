@@ -1,0 +1,8 @@
+addr = "127.0.0.1:9000"
+
+[[http]]
+addr = ":3000"
+
+[[http.routes]]
+path = "POST /pipe"
+service = "pipe"

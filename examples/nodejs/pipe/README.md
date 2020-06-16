@@ -13,3 +13,26 @@ Successfully dialed 127.0.0.1:9000. Services: []
 
 $ POST /pipe (1.6MiB GIF)
 ```
+
+```toml
+addr = "127.0.0.1:9000"
+
+[[http]]
+addr = ":3000"
+
+[[http.routes]]
+path = "POST /pipe"
+service = "pipe"
+```
+
+```js
+const {Node} = require("flatend");
+
+const main = async () => {
+    const node = new Node();
+    node.register('pipe', ctx => ctx.pipe(ctx));
+    await node.dial("127.0.0.1:9000");
+}
+
+main().catch(err => console.error(err));
+```

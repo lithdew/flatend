@@ -1,0 +1,24 @@
+addr = "127.0.0.1:9000"
+
+[[http]]
+addr = ":3000"
+
+[[http.routes]]
+path = "GET /"
+static = "./public"
+
+[[http.routes]]
+path = "GET /todos"
+service = "all_todos"
+
+[[http.routes]]
+path = "GET /todos/add/:content"
+service = "add_todo"
+
+[[http.routes]]
+path = "GET /todos/remove/:id"
+service = "remove_todo"
+
+[[http.routes]]
+path = "GET /todos/done/:id"
+service = "done_todo"

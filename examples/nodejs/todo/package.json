@@ -1,0 +1,10 @@
+{
+  "name": "todo",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^7.1.0",
+    "flatend": "^0.0.1"
+  }
+}

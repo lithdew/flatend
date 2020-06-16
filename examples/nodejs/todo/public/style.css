@@ -1,0 +1,31 @@
+form {
+    display: flex;
+    padding: 10px;
+}
+
+.wrapper {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 4 4"%3E%3Cpath fill="%239C92AC" fill-opacity="0.4" d="M1 3h1v1H1V3zm2-2h1v1H3V1z"%3E%3C/path%3E%3C/svg%3E');
+}
+
+.input {
+    margin-right: 10px;
+}
+
+.frame {
+    width: 40vw;
+    max-width: 400px;
+}
+
+.header {
+    display: inline;
+    text-align: center;
+}
+
+.list-wrapper {
+    max-height: 200px;
+    overflow-y: auto;
+}

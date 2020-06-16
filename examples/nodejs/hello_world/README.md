@@ -18,3 +18,26 @@ Successfully dialed 127.0.0.1:9000. Services: []
 $ http://localhost:3000/hello
 Hello world!
 ```
+
+```toml
+addr = "127.0.0.1:9000"
+
+[[http]]
+addr = ":3000"
+
+[[http.routes]]
+path = "GET /hello"
+service = "hello_world"
+```
+
+```js
+const {Node} = require("flatend");
+
+const main = async () => {
+    const node = new Node();
+    node.register('hello_world', ctx => ctx.send("Hello world!"));
+    await node.dial("127.0.0.1:9000");
+}
+
+main().catch(err => console.error(err));
+```

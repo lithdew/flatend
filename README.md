@@ -1,21 +1,35 @@
+# flatend
+
+> A tool and protocol for building high-performance, end-to-end encrypted, production-ready backends with zero vendor lock-in and hassle.
+
 <div align="center">
 <img src="https://lh3.googleusercontent.com/pw/ACtC-3c6eZvrCLM-wV5UkBn8JZVBf-C-lAJ7XmCLgX5Gz4tCdbhCtREUw_o2bsYIbibU1fCk5A43h_9dBSV7y9hwtv9iIifKVk6QkGEGXYV1E1Kd0jyH62k8zZBsbbT3JSSfGRYW660frbzTO0wtTR4FQECl=s599-no" width="200" height="auto"/>
 </div>
+
+<div align="center">
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](LICENSE)
 [![Discord Chat](https://img.shields.io/discord/697002823123992617)](https://discord.gg/HZEbkeQ)
 [![Sourcegraph](https://sourcegraph.com/github.com/lithdew/flatend/-/badge.svg)](https://sourcegraph.com/github.com/lithdew/flatend?badge)
 
+</div>
+
+<div align="center">
+
 [![Go version](https://img.shields.io/github/go-mod/go-version/lithdew/flatend)](https://pkg.go.dev/github.com/lithdew/flatend)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lithdew/flatend)
 [![GoDoc](https://godoc.org/github.com/lithdew/flatend?status.svg)](http://godoc.org/github.com/lithdew/flatend)
+
+</div>
+
+<div align="center">
 
 [![NPM version](https://img.shields.io/npm/v/flatend.svg?style=flat)](https://www.npmjs.com/package/flatend)
 [![NPM downloads](https://img.shields.io/npm/dm/flatend.svg?style=flat)](https://www.npmjs.com/package/flatend)
 [![Security Responsible
 Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg)](https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md)
 
-**flatend** is a tool and protocol for building high-performance, end-to-end encrypted, production-ready backends with zero vendor lock-in and hassle.
+</div>
 
 Write functions in your favorite language, using your favorite tools and platforms and libraries and databases.
 
@@ -175,7 +189,7 @@ Run your Go program, visit `http://localhost:9000/hello` in your browser, and yo
 
 ### NodeJS
 
-For the following quickstart guide, I will be using TypeScript. However, any flavor of JavaScript will very much work here in principal, so feel free to use pure JavaScript ES6 as well for example.
+For the following quickstart guide, we will be using TypeScript. However, any flavor of JavaScript will very much work here in principal, so feel free to use pure JavaScript ES6 as well for example.
 
 First, add `flatend` as a dependency to your project using npm/yarn.
 
@@ -252,7 +266,7 @@ Is your single behemoth microservice eating up your resources? Split it up into 
 
 Running multiple projects and want to reuse your code? Package it up as yet another microservice with Flatend, and have it seamlessly interact with all of your projects.
 
-As a matter of fact, one thing I find overly common is rewriting HTTP and WebSocket server/routing/middleware code over and over again. Flatend comes prepackaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
+As a matter of fact, one thing overly common is rewriting HTTP and WebSocket server/routing/middleware code over and over again. Flatend comes prepackaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
 
 ### Zero vendor lock-in and barriers.
 

@@ -1,10 +1,8 @@
-# flatend
-
-> A tool and protocol for building high-performance, end-to-end encrypted, production-ready backends with zero vendor lock-in and hassle.
-
-<div align="center">
-<img src="https://lh3.googleusercontent.com/pw/ACtC-3c6eZvrCLM-wV5UkBn8JZVBf-C-lAJ7XmCLgX5Gz4tCdbhCtREUw_o2bsYIbibU1fCk5A43h_9dBSV7y9hwtv9iIifKVk6QkGEGXYV1E1Kd0jyH62k8zZBsbbT3JSSfGRYW660frbzTO0wtTR4FQECl=s599-no" width="200" height="auto"/>
-</div>
+<p align="center">
+  <a href="/"><img 
+    src="https://lh3.googleusercontent.com/pw/ACtC-3c6eZvrCLM-wV5UkBn8JZVBf-C-lAJ7XmCLgX5Gz4tCdbhCtREUw_o2bsYIbibU1fCk5A43h_9dBSV7y9hwtv9iIifKVk6QkGEGXYV1E1Kd0jyH62k8zZBsbbT3JSSfGRYW660frbzTO0wtTR4FQECl=s599-no" 
+    width="200" border="0" alt="flatend"></a>
+</p>
 
 <div align="center">
 
@@ -30,6 +28,8 @@
 Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg)](https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md)
 
 </div>
+
+**flatend** is a tool and protocol for building high-performance, end-to-end encrypted, production-ready backends with zero vendor lock-in and hassle.
 
 Write functions in your favorite language, using your favorite tools and platforms and libraries and databases.
 
@@ -340,7 +340,7 @@ node := new Node({
 
 ### HTTP Server
 
-The pre-packaged HTTP server comes bundled with several configurable options:
+The pre-packaged HTTP server comes bundled with several configurable options, via `config.toml`:
 
 ```toml
 [[http]]
@@ -452,31 +452,31 @@ Got a question? Feed free to create an issue. Check out issues tagged with [ques
 
 ## FAQ
 
-Is Flatend production-ready? Who should use Flatend today?
+Is **flatend** production-ready? Who should use **flatend** today?
 
-* It is still a heavy work in progress, though Flatend is currently being field-tested in a few enterprise projects for a startup and in a few other websites!
+* It is still a heavy work in progress, though **flatend** is currently being field-tested in a few enterprise projects for a startup and in a few other websites!
 
-Will I be able to run Flatend myself?
+Will I be able to run **flatend** myself?
 
-* Yes! Flatend allows for self-hosting on the cloud, on bare metal servers, on Docker swarm; the sky is your limit.
+* Yes! **flatend** allows for self-hosting on the cloud, on bare metal servers, on Docker swarm; the sky is your limit.
 
-I'm worried about vendor lock-in - what happens if Flatend goes out of business?
+I'm worried about vendor lock-in - what happens if **flatend** goes out of business?
 
-* It doesn’t matter: Flatend’s source code has been public since day one and is agnostic to hosting environments.
+* It doesn’t matter: **flatend**'s' source code has been public since day one and is agnostic to hosting environments.
 
-Who owns the code that I write in Flatend, and the data that I and my users save in Flatend?
+Who owns the code that I write in **flatend**, and the data that I and my users save in **flatend**?
 
-* You own the code you write in Flatend, and you own your data. All transport is fully encrypted using industry-standard AES-256 GCM with a shared key derived from an X25519 Diffie-Hellman handshake.
+* You own the code you write in **flatend**, and you own your data. All transport is fully encrypted using industry-standard AES-256 GCM with a shared key derived from an X25519 Diffie-Hellman handshake.
 
-Does Flatend support testing?
+Does **flatend** support testing?
 
 * Yes!
 
-I have a 3rd party and/or legacy systems that I need to use with my backend. Can I still use Flatend?
+I have a 3rd party and/or legacy systems that I need to use with my backend. Can I still use **flatend**?
 
-* Flatend is agnostic to databases, hosting solutions, and even programming languages, since at the end of the day, it is just a protocol. It definitely is compatible with whatever legacy or 3rd party systems you throw at it, provided you write the necessary support for it.
+* **flatend** is agnostic to databases, hosting solutions, and even programming languages, since at the end of the day, it is just a protocol. It definitely is compatible with whatever legacy or 3rd party systems you throw at it, provided you write the necessary support for it.
 
-Are backends written in Flatend compliant with GDPR/CCPA?
+Are backends written in **flatend** compliant with GDPR/CCPA?
 
 * Absolutely, yes. Just make sure the code you write with Flatend is compliant with GDPR/CCPA as well :).
 

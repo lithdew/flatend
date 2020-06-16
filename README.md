@@ -80,6 +80,61 @@ Afterwards, simply run the command below and watch your first Flatend node come 
 $ ./flatend -c config.toml
 ```
 
+In case you are interested on other options you are able to configure for your Flatend HTTP server:
+
+```toml
+[[http]]
+https = true # Enable/disable HTTPS support.
+
+# Domain(s) for HTTPS support.
+domain = "lithdew.net"
+domains = ["a.lithdew.net", "b.lithdew.net"]
+
+# Addresses to listen for HTTP requests on.
+# Default is :80 if https = false, and :443 if https = true.
+addr = ":3000"
+addrs = [":3000", ":4000", "127.0.0.1:9000"]
+
+# Remove trailing slashes in HTTP route path? Default is true.
+redirect_trailing_slash = true
+
+# Redirect to the exact configured HTTP route path? Default is true.
+redirect_fixed_path = true
+
+[http.timeout]
+read = "10s" # HTTP request read timeout. Default is 10s.
+read_header = "10s" # HTTP request header read timeout. Default is 10s.
+idle = "10s" # Idle connection timeout. Default is 10s.
+write = "10s" # HTTP response write timeout. Default is 10s.
+
+[http.max]
+header_size = 1048576 # Max HTTP request header size in bytes.
+body_size = 1048576 # Max HTTP request body size in bytes.
+
+# The route below serves the contents of the file 'config.toml' upon
+# recipient of a 'GET' request at path '/'. The contents of the file
+# are instructed to not be cached to the requester.
+
+# By default, caching for static files that are served is enabled.
+# Instead of a file, a directory may be statically served as well.
+
+[[http.routes]]
+path = "GET /"
+static = "config.toml"
+nocache = true
+
+# The route below takes an URL route parameter ':id', and includes it
+# in a request sent to any Flatend node we know that advertises themselves
+# of handling the service 'a', 'b', or 'c'. The HTTP request body, query parameters,
+# and headers are additionally sent to the node.
+
+[[http.routes]]
+path = "POST /:id"
+services = ["a", "b", "c"]
+```
+
+
+
 Now, let's write our first Flatend microservice.
 
 ### Go

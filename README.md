@@ -202,7 +202,7 @@ Flatend from the start was made to be _self-hosted_ and _open-source_. It was ma
 
 Flatend was also made to be completely agnostic to your devops, finances, frameworks, libraries, and preferences. Want to code with NodeJS? SQLite? kdb+? Go? QUIC? ORM X/Y/Z? You can use all of that with Flatend today.
 
-It's agnostic to the point that you can serve your microservice on your laptop, and have your Flatend HTTP server on DigitalOcean route HTTP requests to your laptop.
+It's agnostic and flexible to the point that you can serve a couple of your microservices on your laptop, and have your Flatend HTTP server on DigitalOcean route HTTP requests to them.
 
 ### Security as a service.
 

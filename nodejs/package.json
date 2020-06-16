@@ -1,7 +1,10 @@
 {
   "name": "flatend",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "start": "rm -rf ./build && yarn tsc && node build/index.js"
+    "prepublish": "yarn tsc",
+    "start": "rm -rf dist && yarn tsc && node dist/index.js"
   },
   "dependencies": {
     "blake2b": "^2.1.3",

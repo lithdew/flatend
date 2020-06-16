@@ -210,7 +210,6 @@ export class ServiceResponsePacket implements Packet {
     handled: boolean = false;
     headers: { [key: string]: string };
 
-
     public constructor(id: number, handled: boolean, headers: { [key: string]: string }) {
         this.id = id;
         this.handled = handled;

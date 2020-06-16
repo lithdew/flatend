@@ -21,17 +21,13 @@ Write functions in your favorite language, using your favorite tools and platfor
 
 ### Keep it simple, be flexible.
 
-If you're like me, you dream of spending only 5$ a month to leave your product/service sustaining thousands of customers and requests per second.
-
-At this golden age of SaaS' and serverless and Docker containers and low-code tools and configuration hell, that dream is slowly starting to fade away.
+If you're like me, you dream of spending only 5$ a month to leave your product/service sustaining thousands of customers and requests per second. At this golden age of SaaS' and serverless and Docker containers and low-code tools and configuration hell, that dream is slowly starting to fade away.
 
 Flatend uses the battle-tested p2p overlay networking protocol Kademlia to give you the building blocks necessary to achieve this dream with as much flexibility and as little code as possible.
 
 With Kademlia, microservices built with Flatend come with service discovery, load balancing, routing, and fully-encrypted industrial-grade end-to-end encryption built in. All of that without the rigor of configuring Kubernetes/Istio/Consul over and over again.
 
-Of course, if you love Kubernetes/Istio/Consul, then use it with Flatend. Run your Flatend services in Docker containers, on Kubernetes, or on AWS hassle-free.
-
-Either way, Flatend is as minimal as it gets for you to be able to make the most out of your single 2$/month bare-metal server, or fleet of 10,000$/month cloud instances.
+Of course, if you love Kubernetes/Istio/Consul, then use it with Flatend. Run your Flatend services in Docker containers, on Kubernetes, or on AWS hassle-free. Either way, Flatend is as minimal as it gets for you to be able to make the most out of your single 2$/month bare-metal server, or fleet of 10,000$/month cloud instances.
 
 ### Production-ready from the start.
 
@@ -53,9 +49,7 @@ It's agnostic to the point that you can serve your microservice on your laptop, 
 
 ### Security as a service.
 
-All communication across microservices written with Flatend are fully-encrypted end-to-end using industrial-grade AES-256 Galois Counter Mode (GCM).
-
-The encryption key is established by a X25519 Diffie-Hellman handshake, whose results are passed through BLAKE-2b 256-bit.
+All communication across microservices written with Flatend are fully-encrypted end-to-end using industrial-grade AES-256 Galois Counter Mode (GCM). The encryption key is established by a X25519 Diffie-Hellman handshake, whose results are passed through BLAKE-2b 256-bit.
 
 Nonces used for encrypting/decrypting messages are unsigned big-endian 64-bit integers incremented per message. The only information exposed on each packet is a single prefixed 32-bit unsigned integer designating a packet's length. 
 

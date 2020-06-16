@@ -1,4 +1,5 @@
-import "core-js/shim";
+import "core-js";
+
 import {DataPacket, HandshakePacket, ID, Opcode, ServiceRequestPacket, ServiceResponsePacket} from "./packet";
 import nacl from "tweetnacl";
 import assert from "assert";

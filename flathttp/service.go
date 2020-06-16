@@ -1,4 +1,4 @@
-package main
+package flathttp
 
 import (
 	"github.com/julienschmidt/httprouter"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func HandleService(node *flatend.Node, services []string) http.Handler {
+func Handle(node *flatend.Node, services []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		headers := make(map[string]string)
 		for key := range r.Header {

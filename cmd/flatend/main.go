@@ -7,6 +7,7 @@ import (
 	"github.com/caddyserver/certmagic"
 	"github.com/julienschmidt/httprouter"
 	"github.com/lithdew/flatend"
+	"github.com/lithdew/flatend/flathttp"
 	"github.com/spf13/pflag"
 	"io/ioutil"
 	"log"
@@ -25,12 +26,12 @@ func check(err error) {
 	}
 }
 
-var Methods = map[string]struct{}{
-	http.MethodGet:    {},
-	http.MethodPost:   {},
-	http.MethodPut:    {},
-	http.MethodDelete: {},
-	http.MethodPatch:  {},
+func hostOnly(hostPort string) string {
+	host, _, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return hostPort
+	}
+	return host
 }
 
 func main() {
@@ -43,7 +44,7 @@ func main() {
 	pflag.Uint16VarP(&bindPort, "port", "p", 9000, "bind port")
 	pflag.Parse()
 
-	var cfg Config
+	var cfg flathttp.Config
 
 	buf, err := ioutil.ReadFile(configPath)
 	if err == nil {
@@ -115,12 +116,12 @@ func main() {
 					})
 				}
 			case len(services) > 0:
-				handler = HandleService(node, services)
+				handler = flathttp.Handle(node, services)
 			}
 
 			if handler != nil {
 				if route.NoCache {
-					handler = NoCache(handler)
+					handler = flathttp.NoCache(handler)
 				}
 				router.Handler(fields[0], fields[1], handler)
 			}

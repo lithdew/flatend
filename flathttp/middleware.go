@@ -1,7 +1,6 @@
-package main
+package flathttp
 
 import (
-	"net"
 	"net/http"
 	"time"
 )
@@ -40,12 +39,4 @@ func NoCache(h http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(fn)
-}
-
-func hostOnly(hostPort string) string {
-	host, _, err := net.SplitHostPort(hostPort)
-	if err != nil {
-		return hostPort // OK; probably had no port to begin with
-	}
-	return host
 }

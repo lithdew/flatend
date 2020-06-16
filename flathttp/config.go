@@ -1,4 +1,4 @@
-package main
+package flathttp
 
 import (
 	"errors"
@@ -9,6 +9,14 @@ import (
 	"strings"
 	"time"
 )
+
+var Methods = map[string]struct{}{
+	http.MethodGet:    {},
+	http.MethodPost:   {},
+	http.MethodPut:    {},
+	http.MethodDelete: {},
+	http.MethodPatch:  {},
+}
 
 type Config struct {
 	Addr string

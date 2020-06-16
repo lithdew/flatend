@@ -84,9 +84,9 @@ A full list of configurable options for your Flatend HTTP server is provided bel
 
 ```toml
 [[http]]
-https = true # Enable/disable HTTPS support.
+https = true # Enable/disable HTTPS support. Default is false.
 
-# Domain(s) for HTTPS support.
+# Domain(s) for HTTPS support. Ignored if https = false.
 domain = "lithdew.net"
 domains = ["a.lithdew.net", "b.lithdew.net"]
 

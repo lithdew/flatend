@@ -84,7 +84,7 @@ This will also open up the port 9000, which Flatend microservices may connect to
 
 ### Hello World
 
-Now, let's write our first microservice. For the following steps I will be using TypeScript, though use whatever language of JavaScript you prefer.
+Now, let's write our first microservice. For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer.
 
 Let's make a NodeJS service named `hello_world` that will respond to any service requests with "Hello world!".
 
@@ -110,6 +110,6 @@ async function main() {
 main().catch(err => console.error(err));
 ``` 
 
-Now, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!". There you have it, your first Flatend microservice.
+Now, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
 
-You can imagine initializing and sending data from SQLite, MySQL, PostgreSQL, or MongoDB, running CRON jobs, etc. using the exact same setup.
+There you have it, your first Flatend microservice.

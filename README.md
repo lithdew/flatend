@@ -78,13 +78,15 @@ service = "hello_world"
 $ ./flatend -c config.toml
 ```
 
-This will create a HTTP server listening on port 3000, serving a single route `GET /hello` which will route requests to the service named `hello_world`.
+Based on the configuration above, Flatend will create a HTTP server listening on port 3000, serving a single route `GET /hello` which will route requests to the service named `hello_world`.
 
-This will also open up the port 9000, which Flatend microservices may connect to in order to provide/receive services.
+The configuration above will also have Flatend accept and transmit data to other Flatend microservices at 127.0.0.1:9000.
 
 ### Hello World
 
-Now, let's write our first microservice. For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer.
+Now, let's write our first microservice.
+
+For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer.
 
 Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
 
@@ -96,7 +98,7 @@ const helloWorld = (ctx: Context) => ctx.send("Hello world!");
 
 In this case, we'll just reply to the request with "Hello world!". Take note that `ctx` in this case is a NodeJS Duplex stream which you may pipe data into and out of, with header data from our HTTP microservice accessible at `ctx.headers`.
 
-Now, we need just need to register `helloWorld` to service `hello_world` for our HTTP server.
+Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at 127.0.0.1:9000.
 
 ```typescript
 import {Node, Context} from "flatend";

@@ -36,7 +36,7 @@ Head over to the [Releases](https://github.com/lithdew/flatend/releases) section
 
 ## Quickstart
 
-Create a new `config.toml`, paste the following in, and run the command below.
+Create a new `config.toml`, and paste:
 
 ```toml
 addr = "127.0.0.1:9000"
@@ -49,15 +49,37 @@ path = "GET /hello"
 service = "hello_world"
 ```
 
+The configuration above will start a Flatend node that will advertise, service, and listen for other Flatend nodes at the address `127.0.0.1:9000`. The address must specify an explicit IP and port, as it will be used to uniquely identify this service in your mesh network.
+
+The configuration above will also start up Flatend's pre-packaged production-ready HTTP server on port 3000, which will route HTTP requests to Flatend nodes that advertise themselves of being able to handle particular services by their name.
+
+With the configuration above in this case, any GET requests to /hello will be forwarded to any other Flatend nodes that advertise themselves willing to handle the service `hello_world`.
+
+HTTPS support is also available via LetsEncrypt. The requirements for enabling HTTPS are that you:
+
+1. have a domain registered, and
+2. have ports 80 and 443 open and available.
+
+Should you meet those requirements, modify your `config.toml` like so:
+
+```toml
+addr = "127.0.0.1:9000"
+
+[[http]]
+domain = "lithdew.net"
+
+[[http.routes]]
+path = "GET /hello"
+service = "hello_world"
+```
+
+Afterwards, simply run the command below and watch your first Flatend node come into life:
+
 ```shell
 $ ./flatend -c config.toml
 ```
 
-In the configuration above, Flatend will create a HTTP server listening on port 3000. Any HTTP requests that matches the route `GET /hello` will be routed to be handled by the service `hello_world`.
-
-Flatend will also listen from and transmit to other Flatend microservices at the address `127.0.0.1:9000`.
-
-Now, let's write our first microservice.
+Now, let's write our first Flatend microservice :).
 
 ### Go
 
@@ -148,7 +170,7 @@ async function main() {
 }
 
 main().catch(err => console.error(err));
-``` 
+```
 
 Run your NodeJS program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!".
 

@@ -32,6 +32,7 @@ Write functions in your favorite language, using your favorite tools and platfor
     * [Go](#go-1)
     * [NodeJS](#nodejs-1)
     * [HTTP Server](#http-server)
+- [Roadmap](#roadmap)
 - [License](#license)
 ## Installation
 
@@ -305,7 +306,7 @@ node := new Node({
 
 ### HTTP Server
 
-The pre-packaged HTTP server comes bundled with several configurable options in `.toml`:
+The pre-packaged HTTP server comes bundled with several configurable options:
 
 ```toml
 [[http]]
@@ -363,6 +364,47 @@ nocache = true
 path = "POST /:id"
 services = ["a", "b", "c"]
 ```
+
+## Roadmap
+
+### General
+
+* Serve Flatend services as a gRPC API.
+* Serve Flatend services as a WebSocket API.
+* Experiment writing Flatend's pre-packaged servers in Ziglang.
+* Multiplex HTTP/WebSocket/gRPC/Flatend services on a single port.
+* Write Flatend SDK for:
+  * Python
+  * Deno
+  * Ziglang
+* Move bidirectional stream management to [lithdew/monte](https://github.com/lithdew/monte).
+
+### HTTP
+
+* Use [lithdew/boat](https://github.com/lithdew/boat) as a rule engine to conditionally allow/block request based on headers.
+* Render Go/Markdown templates provided by a user.
+* Support serving metrics and logs to a designated sink.
+* Support proxying/redirecting to other routes/sites.
+* Support alternative server packages like [valyala/fasthttp](https://github.com/valyala/fasthttp).
+* Create a production-ready terminal REPL.
+  * Serve terminal REPL as TTY/SSH/Web.
+* Serve Prometheus metrics at an endpoint.
+* Allow for re-ordering of middleware.
+* Finer load balancing API.
+
+### Go
+
+- Finer load balancing API.
+- Provide full support for Kademlia routing table.
+- Reduce memory allocations in code hot-paths.
+
+### NodeJS
+
+- Finer load balancing API.
+- Provide full support for Kademlia routing table.
+- Submit requests to other Flatend services.
+- Allow for graceful shutdown.
+- Allow for custom loggers.
 
 ## License
 

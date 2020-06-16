@@ -29,18 +29,7 @@ Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yello
 
 </div>
 
-**flatend** is a tool and protocol for building high-performance, end-to-end encrypted, production-ready backends with zero vendor lock-in and hassle.
-
-Write functions in your favorite language, using your favorite tools and platforms and libraries and databases.
-
-**flatend** will turn them into production-ready microservices that are connected together and exposed as APIs using battle-tested p2p mesh networking, with just a few lines of code.
-
-> "We should have some ways of connecting programs like garden hose--screw in
-  another segment when it becomes necessary to massage data in
-  another way. This is the way of IO also."
-> Doug McIlroy. October 11, 1964
-
-> "It's like low-code, but for developers without the vendor-lockin." Kenta Iwasaki. June 16, 2020
+**flatend** provides the scaffolding and glue for you to build high-performance, end-to-end encrypted, production-ready backends with *zero* vendor lock-in.
 
 ## Requirements
 Go v1.14 or later.
@@ -48,31 +37,9 @@ Node.js v14 stable (14.4.0) or later.
 
 At the time being, **flatend** only supports NodeJS and Go. Support for Python and Deno is planned: join our [Discord server](https://discord.gg/HZEbkeQ) to learn more.
 
-## Table of Contents
-
-- [Installation](#installation)
-- [Quickstart](#quickstart)
-    * [Go](#go)
-    * [NodeJS](#nodejs)
-- [Design](#design)
-    * [Keep it simple, be flexible.](#keep-it-simple-be-flexible)
-    * [Production-ready from the start.](#production-ready-from-the-start)
-    * [Zero vendor lock-in and barriers.](#zero-vendor-lock-in-and-barriers)
-    * [Security as a service.](#security-as-a-service)
-- [Options](#options)
-    * [Go](#go-1)
-    * [NodeJS](#nodejs-1)
-    * [HTTP Server](#http-server)
-- [Showcase](#showcase)
-- [Roadmap](#roadmap)
-- [FAQ](#faq)
-- [Help](#help)
-- [License](#license)
-## Installation
-
-Head over to the [Releases](https://github.com/lithdew/flatend/releases) section and download the latest version of Flatend for your platform.
-
 ## Quickstart
+
+[Download](https://github.com/lithdew/flatend/releases) the latest version of Flatend for your platform.
 
 Create a new `config.toml`, and paste:
 
@@ -87,48 +54,35 @@ path = "GET /hello"
 service = "hello_world"
 ```
 
-The configuration above will start a Flatend node that will advertise, service, and listen for other Flatend nodes at the address `127.0.0.1:9000`. The address must specify an explicit IP and port, as it will be used by other nodes that connect to your node as an integrity check.
 
-The configuration above will also start up Flatend's pre-packaged production-ready HTTP server on port 3000, which will route HTTP requests to Flatend nodes that advertise themselves of being able to handle particular services by their name.
-
-With the configuration above in this case, any GET requests to /hello will be forwarded to any other Flatend nodes that advertise themselves willing to handle the service `hello_world`.
-
-HTTPS support is also available via [LetsEncrypt](https://letsencrypt.org/). The requirements for enabling HTTPS are that you:
+HTTPS support is available via [LetsEncrypt](https://letsencrypt.org/). The requirements for enabling HTTPS are that you:
 
 1. have a domain registered, and
 2. have ports 80 and 443 open and available.
 
-Should you meet those requirements, modify your `config.toml` like so:
+Should you meet those requirements, modify your `config.toml` `[[http]]` block like so:
 
 ```toml
-addr = "127.0.0.1:9000"
-
 [[http]]
 https = true
 domain = "lithdew.net"
-
-[[http.routes]]
-path = "GET /hello"
-service = "hello_world"
 ```
 
-Afterwards, simply run the command below and watch your first Flatend node come to life:
+Run the command
 
 ```shell
 $ ./flatend -c config.toml
 ```
 
-Now, let's write our first Flatend microservice.
-
 ### Go
 
-First, add `flatend` as a Go module into your project.
+Add `flatend` as a Go module.
 
 ```shell
 $ go get github.com/lithdew/flatend
 ```
 
-Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
+Write a function that describes how to handle incoming requests for the `hello_world` service.
 
 ```go
 package main
@@ -141,34 +95,9 @@ func helloWorld(ctx *flatend.Context) {
 }
 ```
 
-In this case, we'll just reply to the request with "Hello world!".
-
-Take note though that `ctx *flatend.Context` implements the `io.Writer`, and exposes the request body and headers as an `io.ReadCloser` and `map[string]string`  respectively. A few rules to consider when writing functions in Flatend are:
-
-- The headers associated to an incoming request may be accessed via `ctx.Headers`.
-- The body of a request may be accessed via `ctx.Body`, which is an `io.ReadCloser`.
-- It is advised to wrap the body with an `io.LimitedReader` as the length of the body of a request is unbounded.
-- Upon the first call to `ctx.Write`, all response headers written via `ctx.WriteHeader` are dispatched to the requester. This implies that after the first write, no more headers may be written and dispatched to the requester.
-- All data that is written is split and sent as encrypted chunks of 2048 bytes.
-- The very moment the function returns, the response to a request is considered to be fully written.
-- Any panics in a function are not caught.
-
-Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
+Register `helloWorld` as a handler for the service `hello_world` and connect to the HTTP server listening for microservices at `127.0.0.1:9000`.
 
 ```go
-package main
-
-import (
-    "github.com/lithdew/flatend"
-    "os"
-    "os/signal"
-)
-
-func helloWorld(ctx *flatend.Context) {
-    ctx.WriteHeader("Content-Type", "text/plain; charset=utf-8")
-    ctx.Write([]byte("Hello world!"))
-}
-
 func main() {
     node := &flatend.Node{
         Services: map[string]flatend.Handler{
@@ -185,19 +114,39 @@ func main() {
 }
 ```
 
-Run your Go program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!". Tinker around restarting either the Go program or the HTTPS server, and notice the Go program automatically reconnecting to the HTTP server.
+Run
 
-### NodeJS
+```
+go run ./cmd/flatend
+```
 
-For the following quickstart guide, we will be using TypeScript. However, any flavor of JavaScript will very much work here in principal, so feel free to use pure JavaScript ES6 as well for example.
+Visit `localhost:9000/hello`
 
-First, add `flatend` as a dependency to your project using npm/yarn.
+Restart either the Go program or the HTTPS server.
+
+Notice the Go program automatically reconnects to the HTTP server and vice versa.
+
+*Note*: Although `ctx *flatend.Context` implements `io.Writer`, and exposes the request body and headers as an `io.ReadCloser` and `map[string]string` respectively, do consider below:
+
+- The headers associated to an incoming request may be accessed via `ctx.Headers`.
+- The body of a request may be accessed via `ctx.Body`, which is an `io.ReadCloser`.
+- It is advised to wrap the body with an `io.LimitedReader` as the length of the body of a request is unbounded.
+- Upon the first call to `ctx.Write`, all response headers written via `ctx.WriteHeader` are dispatched to the requester. This implies that after the first write, no more headers may be written and dispatched to the requester.
+- All data that is written is split and sent as encrypted chunks of 2048 bytes.
+- The very moment the function returns, the response to a request is considered to be fully written.
+- Any panics in a function are not caught.
+
+### Typescript
+
+For the following quickstart guide, we will be using TypeScript. Feel free to use pure JavaScript ES6.
+
+Add `flatend` as a dependency to your project using npm/yarn.
 
 ```shell
 $ npm install flatend
 ```
 
-Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
+Write a function that describes how we want to handle incoming requests for the service `hello_world`.
 
 ```typescript
 import {Context} from "flatend";
@@ -208,24 +157,7 @@ const helloWorld = (ctx: Context) => {
 }
 ```
 
-In this case, we'll just reply to the request with "Hello world!".
-
-Take note that `ctx: Context` is designed to be a NodeJS Duplex stream with a few extra properties and helper methods attached to it. A few rules to consider when writing functions in Flatend are:
-
-- Upon the first write of response data towards request via a `Context`, all headers are dispatched to the requester. This implies that after the first write, no more headers may be set and dispatched to the requester.
-- A handler must close a `Context`  to signal that a response has fully been written out by calling `ctx.end()`.
-- All data that is written into `ctx` is split and sent as encrypted chunks of 2048 bytes.
-- Streams, such as `fs.createFileStream(path: string)`, may be piped into a `ctx` as a response. 
-- Any errors thrown in a handler are caught and sent as a JSON response to the requester.
-- The headers associated to an incoming request may be accessed via `ctx.headers`.
-
-The helper methods exposed in a `ctx: Context` are:
-
-- `ctx.send(data: string | Uint8Array | Buffer)` writes `data` as a response, and closes `ctx`.
-- `ctx.json(data: object)` encodes `data` into a JSON string, writes it as a response, and closes `ctx`.
-- `await ctx.body({limit?: 65536})` reads the request body of `ctx`, with an optimal maximum size limit pre-configured to 65536 bytes. It throws an error if the size limit is exceeded.
-
-Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
+Register `helloWorld` as a handler for the service `hello_world` and connect to the HTTP server listening for microservices at `127.0.0.1:9000`.
 
 ```typescript
 import {Node, Context} from "flatend";
@@ -244,9 +176,45 @@ async function main() {
 main().catch(err => console.error(err));
 ```
 
-Run your NodeJS program, visit `http://localhost:9000/hello` in your browser, and you should see "Hello world!". Tinker around restarting either the NodeJS program or the HTTPS server, and notice the NodeJS program automatically reconnecting to the HTTP server.
+Run
+
+```
+go run ./cmd/flatend
+```
+
+Visit `localhost:9000/hello`
+
+Restart either the Go program or the HTTPS server.
+
+Notice the Go program automatically reconnects to the HTTP server and vice versa.
+
+*Note*: `ctx: Context` is designed to be a NodeJS Duplex stream with a few extra properties and helper methods attached to it. A few rules to consider when writing functions in Flatend are:
+
+- Upon the first write of response data towards request via a `Context`, all headers are dispatched to the requester. This implies that after the first write, no more headers may be set and dispatched to the requester.
+- A handler must close a `Context`  to signal that a response has fully been written out by calling `ctx.end()`.
+- All data that is written into `ctx` is split and sent as encrypted chunks of 2048 bytes.
+- Streams, such as `fs.createFileStream(path: string)`, may be piped into a `ctx` as a response. 
+- Any errors thrown in a handler are caught and sent as a JSON response to the requester.
+- The headers associated to an incoming request may be accessed via `ctx.headers`.
+
+The helper methods exposed in a `ctx: Context` are:
+
+- `ctx.send(data: string | Uint8Array | Buffer)` writes `data` as a response, and closes `ctx`.
+- `ctx.json(data: object)` encodes `data` into a JSON string, writes it as a response, and closes `ctx`.
+- `await ctx.body({limit?: 65536})` reads the request body of `ctx`, with an optimal maximum size limit pre-configured to 65536 bytes. It throws an error if the size limit is exceeded.
 
 ## Design
+
+Write functions in your favorite language, using your favorite tools and platforms and libraries and databases.
+
+**flatend** will turn them into production-ready microservices that are connected together and exposed as APIs using battle-tested p2p mesh networking, with just a few lines of code.
+
+> "We should have some ways of connecting programs like garden hose--screw in
+  another segment when it becomes necessary to massage data in
+  another way. This is the way of IO also."
+> Doug McIlroy. October 11, 1964
+
+> "It's like low-code, but for developers without the vendor-lockin." Kenta Iwasaki. June 16, 2020
 
 ### Keep it simple, be flexible.
 

@@ -57,6 +57,19 @@ Microservices that are able to be discovered have public/private keys that are E
 
 The session handshake protocol is well-documented [here](https://github.com/lithdew/monte).
 
+## Installation
+
+```shell
+$ curl -sLJO https://github.com/lithdew/flatend/releases/download/v0.0.1/flatend_0.0.1_linux_x86_64.tar.gz
+
+$ tar xvzf flatend_0.0.1_linux_x86_64.tar.gz
+LICENSE
+README.md
+flatend
+
+$ ./flatend
+```
+
 ## Quickstart
 
 ### Setup

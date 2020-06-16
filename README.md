@@ -4,6 +4,7 @@
     width="200" border="0" alt="flatend"></a>
 </p>
 
+<p>
 <div align="center">
 <a href="LICENSE"><img src="https://img.shields.io/apm/l/atomic-design-ui.svg?" alt="MIT License"></a>
 <a href="https://discord.gg/HZEbkeQ"><img src="https://img.shields.io/discord/697002823123992617" alt="Discord Chat"></a>
@@ -20,6 +21,7 @@
 <a href="https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md"><img src="https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg" alt="Security Responsible
 Disclosure"></a>
 </div>
+</p>
 
 **flatend** provides the [scaffolding](https://github.com/lithdew/flatend) and [glue](https://github.com/lithdew/monte) for you to build high-performance, [end-to-end encrypted](DESIGN.md#security-as-a-service), [production-ready](DESIGN.md#production-ready-from-the-start) backends with [*zero* vendor lock-in](DESIGN.md#zero-vendor-lock-in-and-barriers).
 

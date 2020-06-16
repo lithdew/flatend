@@ -17,13 +17,24 @@ Write functions in your favorite language, using your favorite tools and platfor
 
 > "It's like low-code, but for developers without the vendor-lockin." Kenta Iwasaki. June 16, 2020
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+    * [Go](#go)
+    * [NodeJS](#nodejs)
+- [Design](#design)
+    * [Keep it simple, be flexible.](#keep-it-simple-be-flexible)
+    * [Production-ready from the start.](#production-ready-from-the-start)
+    * [Zero vendor lock-in and barriers.](#zero-vendor-lock-in-and-barriers)
+    * [Security as a service.](#security-as-a-service)
+- [License](#license)
+  
 ## Installation
 
 Head over to the [Releases](https://github.com/lithdew/flatend/releases) section and download the latest version of Flatend for your platform.
 
 ## Quickstart
-
-### Setup
 
 Create a new `config.toml`, paste the following in, and run the command below.
 

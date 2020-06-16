@@ -80,7 +80,7 @@ Afterwards, simply run the command below and watch your first Flatend node come 
 $ ./flatend -c config.toml
 ```
 
-In case you are interested on other options you are able to configure for your Flatend HTTP server:
+A full list of configurable options for your Flatend HTTP server is provided below.
 
 ```toml
 [[http]]
@@ -136,8 +136,6 @@ nocache = true
 path = "POST /:id"
 services = ["a", "b", "c"]
 ```
-
-
 
 Now, let's write our first Flatend microservice.
 

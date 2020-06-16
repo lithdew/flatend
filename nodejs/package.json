@@ -1,9 +1,13 @@
 {
   "name": "flatend",
+  "description": "Production-ready mesh networks of microservices using just a few lines of code.",
+  "author": "Kenta Iwasaki",
+  "license": "MIT",
+  "version": "0.0.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prepublish": "yarn tsc",
+    "prepare": "yarn tsc",
     "start": "rm -rf dist && yarn tsc && node dist/index.js"
   },
   "dependencies": {

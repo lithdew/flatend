@@ -11,6 +11,7 @@ require (
 	github.com/lithdew/bytesutil v0.0.0-20200409052507-d98389230a59
 	github.com/lithdew/kademlia v0.0.0-20200613105650-31ee52d03942
 	github.com/lithdew/monte v0.0.0-20200613174427-105bad77ff52
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.0
 	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980 // indirect

@@ -6,30 +6,30 @@
 
 <div align="center">
 
-[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](LICENSE)
-[![Discord Chat](https://img.shields.io/discord/697002823123992617)](https://discord.gg/HZEbkeQ)
-[![Sourcegraph](https://sourcegraph.com/github.com/lithdew/flatend/-/badge.svg)](https://sourcegraph.com/github.com/lithdew/flatend?badge)
+<a href="LICENSE"><img src="https://img.shields.io/apm/l/atomic-design-ui.svg?" alt="MIT License"></a>
+<a href="https://discord.gg/HZEbkeQ"><img src="https://img.shields.io/discord/697002823123992617" alt="Discord Chat"></a>
+<a href="https://sourcegraph.com/github.com/lithdew/flatend?badge"><img src="https://sourcegraph.com/github.com/lithdew/flatend/-/badge.svg" alt="Sourcegraph"></a>
 
 </div>
 
 <div align="center">
 
-[![Go version](https://img.shields.io/github/go-mod/go-version/lithdew/flatend)](https://pkg.go.dev/github.com/lithdew/flatend)
-[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lithdew/flatend)
-[![GoDoc](https://godoc.org/github.com/lithdew/flatend?status.svg)](http://godoc.org/github.com/lithdew/flatend)
+<a href="https://pkg.go.dev/github.com/lithdew/flatend"><img src="https://img.shields.io/github/go-mod/go-version/lithdew/flatend" alt="Go version"></a>
+<a href="https://pkg.go.dev/github.com/lithdew/flatend"><img src="https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&amp;logoColor=white&amp;style=flat-square" alt="go.dev reference"></a>
+<a href="http://godoc.org/github.com/lithdew/flatend"><img src="https://godoc.org/github.com/lithdew/flatend?status.svg" alt="GoDoc"></a>
 
 </div>
 
 <div align="center">
 
-[![NPM version](https://img.shields.io/npm/v/flatend.svg?style=flat)](https://www.npmjs.com/package/flatend)
-[![NPM downloads](https://img.shields.io/npm/dm/flatend.svg?style=flat)](https://www.npmjs.com/package/flatend)
-[![Security Responsible
-Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg)](https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md)
+<a href="https://www.npmjs.com/package/flatend"><img src="https://img.shields.io/npm/v/flatend.svg?style=flat" alt="NPM version"></a>
+<a href="https://www.npmjs.com/package/flatend"><img src="https://img.shields.io/npm/dm/flatend.svg?style=flat" alt="NPM downloads"></a>
+<a href="https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md"><img src="https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg" alt="Security Responsible
+Disclosure"></a>
 
 </div>
 
-**flatend** provides the scaffolding and glue for you to build high-performance, end-to-end encrypted, production-ready backends with *zero* vendor lock-in.
+**flatend** provides the [scaffolding](https://github.com/lithdew/flatend) and [glue](https://github.com/lithdew/monte) for you to build high-performance, end-to-end encrypted, production-ready backends with *zero* vendor lock-in.
 
 ## Requirements
 Go v1.14 or later.
@@ -204,6 +204,8 @@ The helper methods exposed in a `ctx: Context` are:
 - `await ctx.body({limit?: 65536})` reads the request body of `ctx`, with an optimal maximum size limit pre-configured to 65536 bytes. It throws an error if the size limit is exceeded.
 
 ### config.toml Explained
+
+*Note*: As of v0.0.1, `config.toml` only supports `http` and `address` configuration.
 
 ```toml
 [[http]]

@@ -264,10 +264,20 @@ All of these prepackaged services are fully configurable with the list of config
 A Flatend node may be configured like so:
 
 ```go
+import "github.com/lithdew/flatend"
+
 node := &flatend.Node{
-    PublicAddr: "...", // The public address to advertise to other nodes that may want to use this nodes' services. Default is empty to indicate that the node does not advertise its services.
-    SecretKey: kademlia.SecretKey{...}, // An Ed25519 secret key that uniquely identifies this node.
-    BindAddrs: []flatend.BindFunc{ // Open this node up to other Flatend nodes on a specified TCP address. Default is empty to indicate that this node only caters its services to other Flatend nodes it manually connects to.
+    // The public address to advertise to other nodes that may want to use this nodes' services.
+	// Default is empty to indicate that the node does not advertise its services.
+    PublicAddr: "...",
+
+    // An Ed25519 secret key that uniquely identifies this node.
+    SecretKey: kademlia.SecretKey{...},
+
+    // Open this node up to other Flatend nodes on a specified TCP address.
+    // Default is empty to indicate that this node only caters its services to other Flatend nodes
+    // it manually connects to.
+    BindAddrs: []flatend.BindFunc{
         flatend.BindAny(), // Randomly-selected open port.
         flatend.BindTCP(":3000"), // Specified IPv4/IPv6 address.
         flatend.BindTCPv4("127.0.0.1:3000"), // Specified IPv4 address.
@@ -281,9 +291,15 @@ node := &flatend.Node{
 A Flatend node may be configured like so:
 
 ```typescript
+import nacl from "tweetnacl";
+import {Node, ID} from "flatend";
+
 node := new Node({
-    id: new ID(publicKey, host, port), // Ed25519 public key, IPv4/IPv6 host, and unsigned 16-bit integer port.
-    keys: nacl.sign.keyPair(), // Ed25519 keypair that is unique to this node.
+    // Ed25519 public key, IPv4/IPv6 host, and unsigned 16-bit integer port.
+    id: new ID(publicKey, host, port),
+    
+    // Ed25519 keypair that is unique to this node.
+    keys: nacl.sign.keyPair(), 
 })
 ```
 

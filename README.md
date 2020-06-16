@@ -5,28 +5,20 @@
 </p>
 
 <div align="center">
-
 <a href="LICENSE"><img src="https://img.shields.io/apm/l/atomic-design-ui.svg?" alt="MIT License"></a>
 <a href="https://discord.gg/HZEbkeQ"><img src="https://img.shields.io/discord/697002823123992617" alt="Discord Chat"></a>
 <a href="https://sourcegraph.com/github.com/lithdew/flatend?badge"><img src="https://sourcegraph.com/github.com/lithdew/flatend/-/badge.svg" alt="Sourcegraph"></a>
-
 </div>
-
 <div align="center">
-
 <a href="https://pkg.go.dev/github.com/lithdew/flatend"><img src="https://img.shields.io/github/go-mod/go-version/lithdew/flatend" alt="Go version"></a>
 <a href="https://pkg.go.dev/github.com/lithdew/flatend"><img src="https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&amp;logoColor=white&amp;style=flat-square" alt="go.dev reference"></a>
 <a href="http://godoc.org/github.com/lithdew/flatend"><img src="https://godoc.org/github.com/lithdew/flatend?status.svg" alt="GoDoc"></a>
-
 </div>
-
 <div align="center">
-
 <a href="https://www.npmjs.com/package/flatend"><img src="https://img.shields.io/npm/v/flatend.svg?style=flat" alt="NPM version"></a>
 <a href="https://www.npmjs.com/package/flatend"><img src="https://img.shields.io/npm/dm/flatend.svg?style=flat" alt="NPM downloads"></a>
 <a href="https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md"><img src="https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg" alt="Security Responsible
 Disclosure"></a>
-
 </div>
 
 **flatend** provides the [scaffolding](https://github.com/lithdew/flatend) and [glue](https://github.com/lithdew/monte) for you to build high-performance, [end-to-end encrypted](DESIGN.md#security-as-a-service), [production-ready](DESIGN.md#production-ready-from-the-start) backends with [*zero* vendor lock-in](DESIGN.md#zero-vendor-lock-in-and-barriers).

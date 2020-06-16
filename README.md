@@ -92,6 +92,12 @@ Now, let's write our first microservice.
 
 ### Go
 
+First, add `flatend` as a Go module into your project.
+
+```shell
+$ go get github.com/lithdew/flatend
+```
+
 Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
 
 ```go
@@ -141,7 +147,15 @@ Run your Go program, visit `http://localhost:9000/hello` in your browser, and yo
 
 ### NodeJS
 
-For the following steps I will be using TypeScript, though use whatever flavor of JavaScript you prefer. Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
+First, add `flatend` as a dependency to your project using npm/yarn.
+
+```shell
+$ npm install flatend
+```
+
+For the following steps I will be using TypeScript, though use whichever flavor of JavaScript you prefer.
+
+Let's write a function that describes how we want to handle incoming requests for the service `hello_world`.
 
 ```typescript
 import {Context} from "flatend";

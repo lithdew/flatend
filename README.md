@@ -49,7 +49,7 @@ path = "GET /hello"
 service = "hello_world"
 ```
 
-The configuration above will start a Flatend node that will advertise, service, and listen for other Flatend nodes at the address `127.0.0.1:9000`. The address must specify an explicit IP and port, as it will be used to uniquely identify this service in your mesh network.
+The configuration above will start a Flatend node that will advertise, service, and listen for other Flatend nodes at the address `127.0.0.1:9000`. The address must specify an explicit IP and port, as it will be used by other nodes that connect to your node as an integrity check.
 
 The configuration above will also start up Flatend's pre-packaged production-ready HTTP server on port 3000, which will route HTTP requests to Flatend nodes that advertise themselves of being able to handle particular services by their name.
 

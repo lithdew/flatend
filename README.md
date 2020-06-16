@@ -1,14 +1,25 @@
-# flatend
+<div align="center">
+<img src="https://github.com/lithdew/flatend/raw/master/graphics/flatend.png" width="450" height="auto"/>
+</div>
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](LICENSE)
-[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lithdew/flatend)
 [![Discord Chat](https://img.shields.io/discord/697002823123992617)](https://discord.gg/HZEbkeQ)
+[![Sourcegraph](https://sourcegraph.com/github.com/lithdew/flatend/-/badge.svg)](https://sourcegraph.com/github.com/lithdew/flatend?badge)
+
+[![Go version]()](https://pkg.go.dev/github.com/lithdew/flatend)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/lithdew/flatend)
+[![GoDoc](https://godoc.org/github.com/lithdew/flatend?status.svg)](http://godoc.org/github.com/lithdew/flatend)
+
+[![NPM version](https://img.shields.io/npm/v/flatend.svg?style=flat)](https://www.npmjs.com/package/flatend)
+[![NPM downloads](https://img.shields.io/npm/dm/flatend.svg?style=flat)](https://www.npmjs.com/package/flatend)
+[![Security Responsible
+Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg)](https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md)
+
+**flatend** is a tool and protocol for building high-performance, end-to-end encrypted, production-ready backends with zero vendor lock-in and hassle.
 
 Write functions in your favorite language, using your favorite tools and platforms and libraries and databases.
 
 **flatend** will turn them into production-ready microservices that are connected together and exposed as APIs using battle-tested p2p mesh networking, with just a few lines of code.
-
-**flatend** at the time being currently only supports NodeJS and Go. Support for Python and Deno is planned: join our Discord server to learn more.
 
 > "We should have some ways of connecting programs like garden hose--screw in
   another segment when it becomes necessary to massage data in
@@ -16,6 +27,12 @@ Write functions in your favorite language, using your favorite tools and platfor
 > Doug McIlroy. October 11, 1964
 
 > "It's like low-code, but for developers without the vendor-lockin." Kenta Iwasaki. June 16, 2020
+
+## Requirements
+Go v1.14 or later.
+Node.js v14 stable (14.4.0) or later.
+
+At the time being, **flatend** only supports NodeJS and Go. Support for Python and Deno is planned: join our [Discord server](https://discord.gg/HZEbkeQ) to learn more.
 
 ## Table of Contents
 
@@ -32,7 +49,10 @@ Write functions in your favorite language, using your favorite tools and platfor
     * [Go](#go-1)
     * [NodeJS](#nodejs-1)
     * [HTTP Server](#http-server)
+- [Showcase](#showcase)
 - [Roadmap](#roadmap)
+- [FAQ](#faq)
+- [Help](#help)
 - [License](#license)
 ## Installation
 
@@ -232,7 +252,7 @@ Is your single behemoth microservice eating up your resources? Split it up into 
 
 Running multiple projects and want to reuse your code? Package it up as yet another microservice with Flatend, and have it seamlessly interact with all of your projects.
 
-As a matter of fact, one thing I find overly common is rewriting HTTP and WebSocket server/routing/middleware code over and over again. Flatend comes pre-packaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
+As a matter of fact, one thing I find overly common is rewriting HTTP and WebSocket server/routing/middleware code over and over again. Flatend comes prepackaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
 
 ### Zero vendor lock-in and barriers.
 
@@ -254,9 +274,9 @@ The session handshake protocol is well-documented [here](https://github.com/lith
 
 ## Options
 
-By default, Flatend comes pre-packaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
+By default, Flatend comes prepackaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
 
-More pre-packaged services are planned to be coming out soon from the Flatend team for creating production-ready WebSocket, TCP, and gRPC APIs out of Flatend services.
+More prepackaged services are planned to be coming out soon from the Flatend team for creating production-ready WebSocket, TCP, and gRPC APIs out of Flatend services.
 
 All of these prepackaged services are fully configurable with the list of configurable values specified below. Apart from configuring these services, services created using Flatend APIs may also be configured as shown below.
 
@@ -365,6 +385,12 @@ path = "POST /:id"
 services = ["a", "b", "c"]
 ```
 
+## Showcase
+
+[![Mask Demand Calculator](https://github.com/lithdew/flatend/raw/master/graphics/mask-calc.png)](https://wars-mask.surge.sh/en)
+
+**Mask Demand Calculator** - An information site for calculating the masks your household needs. Serving RSS feeds with Flatend to more than 200K+ site visitors.
+
 ## Roadmap
 
 ### General
@@ -405,6 +431,40 @@ services = ["a", "b", "c"]
 - Submit requests to other Flatend services.
 - Allow for graceful shutdown.
 - Allow for custom loggers.
+
+## Help
+
+Got a question? Feed free to create an issue. Check out issues tagged with [question](https://github.com/lithdew/flatend/issues?q=is%3Aopen+is%3Aissue+label%3A%22question%22) first before creating a new issue.
+
+## FAQ
+
+Is Flatend production-ready? Who should use Flatend today?
+
+* It is still a heavy work in progress, though Flatend is currently being field-tested in a few enterprise projects for a startup and in a few other websites!
+
+Will I be able to run Flatend myself?
+
+* Yes! Flatend allows for self-hosting on the cloud, on bare metal servers, on Docker swarm; the sky is your limit.
+
+I'm worried about vendor lock-in - what happens if Flatend goes out of business?
+
+* It doesn’t matter: Flatend’s source code has been public since day one and is agnostic to hosting environments.
+
+Who owns the code that I write in Flatend, and the data that I and my users save in Flatend?
+
+* You own the code you write in Flatend, and you own your data. All transport is fully encrypted using industry-standard AES-256 GCM with a shared key derived from an X25519 Diffie-Hellman handshake.
+
+Does Flatend support testing?
+
+* Yes!
+
+I have a 3rd party and/or legacy systems that I need to use with my backend. Can I still use Flatend?
+
+* Flatend is agnostic to databases, hosting solutions, and even programming languages, since at the end of the day, it is just a protocol. It definitely is compatible with whatever legacy or 3rd party systems you throw at it, provided you write the necessary support for it.
+
+Are backends written in Flatend compliant with GDPR/CCPA?
+
+* Absolutely, yes. Just make sure the code you write with Flatend is compliant with GDPR/CCPA as well :).
 
 ## License
 

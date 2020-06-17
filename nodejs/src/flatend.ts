@@ -135,16 +135,18 @@ export class Context extends Duplex {
 }
 
 class Client {
+    addr: string;
     sock: MonteSocket;
 
     count: number; // streams count
     streams: Map<number, Context>; // stream id -> stream
 
-    id?: ID | null;
-    services?: string[];
+    id?: ID;
+    services: string[] = [];
 
 
-    constructor(sock: MonteSocket) {
+    constructor(addr: string, sock: MonteSocket) {
+        this.addr = addr;
         this.sock = sock;
 
         this.count = 0;
@@ -192,22 +194,20 @@ export class Node {
         const port = parseInt(fields[1]);
         assert(port > 0 && port < 65536)
 
-        addr = host + ":" + port;
-
         let client = this.#clients.get(addr);
         if (!client) {
-            client = new Client(await MonteSocket.connect({host: host, port: port}));
+            client = new Client(host + ":" + port, await MonteSocket.connect({host: host, port: port}));
 
             client.sock.once('end', () => {
-                client?.services?.forEach(service => this.#services.get(service)?.delete(client!));
+                client!.services.forEach(service => this.#services.get(service)?.delete(client!));
                 this.#providers.delete(client!.sock);
-                this.#clients.delete(addr);
+                this.#clients.delete(client!.addr);
 
                 const reconnect = async () => {
-                    console.log(`Trying to reconnect to ${addr}. Sleeping for 1s.`);
+                    console.log(`Trying to reconnect to ${client!.addr}. Sleeping for 1s.`);
 
                     try {
-                        await this.dial(addr);
+                        await this.dial(client!.addr);
                     } catch (err) {
                         setTimeout(reconnect, 1000);
                     }
@@ -219,10 +219,14 @@ export class Node {
             client.sock.on('data', this._data.bind(this));
             client.sock.on('error', console.error);
 
-            this.#clients.set(addr, client);
+            this.#clients.set(client.addr, client);
             this.#providers.set(client.sock, client);
         }
 
+        await this.probe(client);
+    }
+
+    private async probe(client: Client) {
         let packet = new HandshakePacket(null, this.services, null);
         if (!this.anonymous) {
             packet.id = this.#id;
@@ -233,7 +237,7 @@ export class Node {
         packet = HandshakePacket.decode(res)[0];
 
         if (packet.id && packet.signature) {
-            assert(typeof packet.id.host === "string" && ip.isEqual(packet.id.host, host) && packet.id.port === port);
+            // assert(typeof packet.id.host === "string" && ip.isEqual(packet.id.host, host) && packet.id.port === port);
             assert(nacl.sign.detached.verify(packet.payload, packet.signature, packet.id.publicKey));
 
             client.id = packet.id;
@@ -246,7 +250,7 @@ export class Node {
             this.#services.get(service)!.add(client!);
         });
 
-        console.log(`Successfully dialed ${addr}. Services: [${packet.services.join(', ')}]`);
+        console.log(`Successfully dialed ${client.addr}. Services: [${packet.services.join(', ')}]`);
     }
 
     private _data({sock, seq, body}: { sock: MonteSocket, seq: number, body: Buffer }) {

@@ -9,6 +9,8 @@ export enum Opcode {
     ServiceRequest,
     ServiceResponse,
     Data,
+    FindNodeRequest,
+    FindNodeResponse,
 }
 
 export interface Packet {
@@ -302,5 +304,144 @@ export class DataPacket implements Packet {
         buf = buf.slice(dataLen);
 
         return [new DataPacket(id, data), buf];
+    }
+}
+
+export class FindNodeRequest implements Packet {
+    target: ID
+
+    public constructor(target: ID) {
+        this.target = target;
+    }
+
+    public encode(): Buffer {
+        return this.target.encode();
+    }
+
+    public static decode(buf: Buffer): [FindNodeRequest, Buffer] {
+        const [target, leftover] = ID.decode(buf);
+        buf = leftover;
+        return [new FindNodeRequest(target), buf]
+    }
+}
+
+export class FindNodeResponse implements Packet {
+    closest: ID[]
+
+    public constructor(closest: ID[]) {
+        this.closest = closest;
+    }
+
+    public encode(): Buffer {
+        return Buffer.concat([Buffer.of(this.closest.length), ...this.closest.map(id => id.encode())]);
+    }
+
+    public decode(buf: Buffer): [FindNodeResponse, Buffer] {
+        const closestLen = buf.readUInt8();
+        buf = buf.slice(1);
+
+        const closest = [...Array(closestLen)].map(() => {
+            const [id, leftover] = ID.decode(buf);
+            buf = leftover;
+            return id;
+        });
+
+        return [new FindNodeResponse(closest), buf];
+    }
+}
+
+export enum UpdateResult {
+    New,
+    Ok,
+    Full,
+    Fail,
+}
+
+const leadingZeros = (buf: Uint8Array): number => {
+    const i = buf.findIndex(b => b != 0);
+    if (i == -1) return buf.byteLength * 8;
+
+    let b = buf[i] >>> 0;
+    if (b === 0) return i * 8 + 8;
+    return i * 8 + (7 - (Math.log(b) / Math.LN2 | 0) | 0);
+}
+
+const xor = (a: Uint8Array, b: Uint8Array): Uint8Array => {
+    const c = Buffer.alloc(Math.min(a.byteLength, b.byteLength))
+    for (let i = 0; i < c.byteLength; i++) c[i] = a[i] ^ b[i];
+    return c;
+}
+
+export class Table {
+    id: ID;
+    cap: number = 16;
+    length: number = 0;
+    buckets: Array<Array<ID>> = [...Array(nacl.sign.publicKeyLength * 8)].map(() => []);
+
+    public constructor(id: ID) {
+        this.id = id;
+    }
+
+    private bucketIndex(pub: Uint8Array): number {
+        if (Buffer.compare(pub, this.id.publicKey) === 0) return 0;
+        return leadingZeros(xor(pub, this.id.publicKey));
+    }
+
+    public update(id: ID): UpdateResult {
+        if (Buffer.compare(id.publicKey, this.id.publicKey) === 0) return UpdateResult.Fail;
+
+        const bucket = this.buckets[this.bucketIndex(id.publicKey)];
+
+        const i = bucket.findIndex(item => Buffer.compare(item.publicKey, id.publicKey) === 0);
+        if (i >= 0) {
+            bucket.unshift(...bucket.splice(i, 1));
+            return UpdateResult.Ok;
+        }
+
+        if (bucket.length < this.cap) {
+            bucket.unshift(id);
+            this.length++;
+            return UpdateResult.New;
+        }
+        return UpdateResult.Full;
+    }
+
+    public delete(pub: Uint8Array): boolean {
+        const bucket = this.buckets[this.bucketIndex(pub)];
+        const i = bucket.findIndex(id => Buffer.compare(id.publicKey, pub) === 0);
+        if (i >= 1) {
+            bucket.splice(i, 1);
+            this.length--;
+            return true;
+        }
+        return false;
+    }
+
+    public has(pub: Uint8Array): boolean {
+        const bucket = this.buckets[this.bucketIndex(pub)];
+        return !!bucket.find(id => Buffer.compare(id.publicKey, pub) === 0);
+    }
+
+    public closestTo(pub: Uint8Array, k = this.cap): ID[] {
+        const closest: ID[] = [];
+
+        const fill = (i: number) => {
+            const bucket = this.buckets[i];
+            for (let i = 0; closest.length < k && i < bucket.length; i++) {
+                if (Buffer.compare(bucket[i].publicKey, pub) != 0) closest.push(bucket[i]);
+            }
+            return closest.length < k;
+        };
+
+        const m = this.bucketIndex(pub);
+        let l = m - 1;
+        let r = m + 1;
+
+        fill(m);
+        while ((l >= 0 && fill(l)) || (r < this.buckets.length && fill(r))) {
+            [l, r] = [l-1, r+1];
+        }
+
+        return closest;
     }
 }

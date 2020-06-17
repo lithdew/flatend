@@ -300,7 +300,7 @@ func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
 		for i := 0; i < 8; i++ { // 8 attempts max
 			err := n.Probe(addr)
 			if err == nil {
-				break
+				return
 			}
 
 			duration := b.Duration()

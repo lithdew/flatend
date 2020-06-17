@@ -23,7 +23,23 @@ Disclosure"></a>
 </div>
 </p>
 
-**flatend** provides the [scaffolding](https://github.com/lithdew/flatend) and [glue](https://github.com/lithdew/monte) for you to build high-performance, [end-to-end encrypted](DESIGN.md#security-as-a-service), [production-ready](DESIGN.md#production-ready-from-the-start) backends with [*zero* vendor lock-in](DESIGN.md#zero-vendor-lock-in-and-barriers).
+**flatend** provides the [scaffolding](https://github.com/lithdew/flatend) and [glue](https://github.com/lithdew/monte) for you to build [end-to-end encrypted](DESIGN.md#security-as-a-service), [production-ready](DESIGN.md#production-ready-from-the-start) backends with [*zero* vendor lock-in](DESIGN.md#zero-vendor-lock-in-and-barriers).
+
+## Features
+
+* Open platform and open-source
+* End-to-end encryption (HTTPS)
+* Function-as-service - write functions as separate microservices
+* Auto-reconnection of closed connections
+
+## Feature Compatibility
+
+| Feature               | Go SDK       | NodeJS SDK   |
+| :-------------------  | :----------- | :----------- |
+| Custom host & port    | &#10003;     | &#10003;     |
+| Public key generation | &#10003;     | &#10007;     |
+| Node listening        | &#10003;     | &#10007;     |
+| Auto-HTTPS            | &#10003;     | &#10007;     |
 
 ## Requirements
 
@@ -35,21 +51,24 @@ Node.js v14 stable (14.4.0) or later.
 
 At the time being, **flatend** only supports NodeJS and Go. Support for Python and Deno is planned: [Join our Discord server](https://discord.gg/HZEbkeQ) to learn more.
 
-## Step 1: Choose Your HTTP Server
+## Usage 
 
-Flatend as a protocol is framework-agnostic.
+### Step 1: Download Prebuilt Node or Build Node from Source
 
-We provide a prepackaged binary containing a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
+Flatend comes with a set of pre-built nodes bundled as a single binary.
 
-### Download Binary
+*Note*: As of v0.0.1, the binary contains:
+* a HTTP server written in Go with [LetsEncrypt](https://letsencrypt.org/) support
+
+#### Download Binary
 
 For convenience, you may directly [download](https://github.com/lithdew/flatend/releases) the binary for quickstart.
 
-### Build It Yourself
+#### Build from Source
 
 Or, you could [build from source](#build-from-source).
 
-## Step 2: Quickstart
+### Step 2: Quickstart
 
 Create a new `config.toml`, and paste:
 
@@ -63,7 +82,6 @@ addr = ":3000"
 path = "GET /hello"
 service = "hello_world"
 ```
-
 
 HTTPS support is available via [LetsEncrypt](https://letsencrypt.org/). The requirements for enabling HTTPS are that you:
 
@@ -87,7 +105,7 @@ $ ./flatend -c config.toml
 Depending on the language used, choose the corresponding SDK:
 
 * [Go](#go-sdk)
-* [NodeJS](#typescript-sdk)
+* [NodeJS](#nodejs-sdk)
 
 ### Go SDK
 
@@ -97,7 +115,7 @@ Add `flatend` as a Go module.
 $ go get github.com/lithdew/flatend
 ```
 
-Write a function that describes how to handle incoming requests for the `hello_world` service.
+Write a function to handle incoming requests for the `hello_world` service.
 
 ```go
 package main
@@ -148,9 +166,9 @@ Notice the Go program automatically reconnects to the HTTP server and vice versa
 
 For advanced `ctx` and `config.toml` configuration, please refer to [API Docs](API.md).
 
-### Typescript SDK
+### NodeJS SDK
 
-For the following quickstart guide, we will be using TypeScript. Feel free to use pure JavaScript ES6.
+For the following quickstart guide, we will be using TypeScript.
 
 Add `flatend` as a dependency to your project using npm/yarn.
 
@@ -158,7 +176,7 @@ Add `flatend` as a dependency to your project using npm/yarn.
 $ npm install flatend
 ```
 
-Write a function that describes how we want to handle incoming requests for the service `hello_world`.
+Write a function to handle incoming requests for the service `hello_world`.
 
 ```typescript
 import {Context} from "flatend";
@@ -219,7 +237,7 @@ Run
 `go build ./cmd/flatend`
 
 Execute the binary
-`sudo ./flatend` 
+`sudo ./flatend`
 
 ## Showcase
 

@@ -112,7 +112,7 @@ services = ["a", "b", "c"]
 
 ## Options
 
-By default, Flatend comes prepackaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with LetsEncrypt support.
+By default, Flatend comes prepackaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with [LetsEncrypt](https://letsencrypt.org/) support.
 
 More prepackaged services are planned to be coming out soon from the Flatend team for creating production-ready WebSocket, TCP, and gRPC APIs out of Flatend services.
 

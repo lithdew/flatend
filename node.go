@@ -209,7 +209,7 @@ func (n *Node) Bootstrap() {
 					return
 				}
 
-				_, err = n.probe(conn)
+				err = n.probe(conn)
 				if err != nil {
 					return
 				}
@@ -531,21 +531,21 @@ func (n *Node) getClient(addr string) *monte.Client {
 	return client
 }
 
-func (n *Node) probe(conn *monte.Conn) (*Provider, error) {
-	provider, _ := n.providers.register(conn, nil, nil, true)
+func (n *Node) probe(conn *monte.Conn) error {
+	provider, exists := n.providers.register(conn, nil, nil, true)
 
 	req := n.createHandshakePacket(nil).AppendTo([]byte{OpcodeHandshake})
 	res, err := conn.Request(req[:0], req)
 	if err != nil {
-		return provider, err
+		return err
 	}
 	packet, err := UnmarshalHandshakePacket(res)
 	if err != nil {
-		return provider, err
+		return err
 	}
 	err = packet.Validate(req[:0])
 	if err != nil {
-		return provider, err
+		return err
 	}
 
 	if packet.ID != nil {
@@ -556,6 +556,11 @@ func (n *Node) probe(conn *monte.Conn) (*Provider, error) {
 
 		// update the provider with id and services info
 		provider, _ = n.providers.register(conn, packet.ID, packet.Services, true)
+		if !exists {
+			log.Printf("You are now connected to %s. Services: %s", provider.Addr(), provider.Services())
+		} else {
+			log.Printf("Re-probed %s. Services: %s", provider.Addr(), provider.Services())
+		}
 
 		// update the routing table
 		n.tableLock.Lock()
@@ -563,7 +568,7 @@ func (n *Node) probe(conn *monte.Conn) (*Provider, error) {
 		n.tableLock.Unlock()
 	}
 
-	return provider, nil
+	return nil
 }
 
 func (n *Node) Probe(addr string) error {
@@ -577,12 +582,10 @@ func (n *Node) Probe(addr string) error {
 		return err
 	}
 
-	provider, err := n.probe(conn)
+	err = n.probe(conn)
 	if err != nil {
 		return err
 	}
-
-	log.Printf("You are now connected to %s. Services: %s", provider.Addr(), provider.Services())
 
 	return nil
 }

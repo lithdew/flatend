@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -388,6 +389,7 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 			go func() {
 				ctx := acquireContext(packet.Headers, stream.Reader, stream.ID, ctx.Conn())
 				defer releaseContext(ctx)
+				defer ctx.Body.Close()
 
 				handler(ctx)
 
@@ -473,12 +475,13 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 			return err
 		}
 
-		if stream.ID%2 == 1 && stream.Header == nil {
-			err = fmt.Errorf("outgoing stream with id %d received a payload packet but has not received a header yet",
-				packet.ID)
-			provider.CloseStreamWithError(stream, err)
-			return err
-		}
+		// FIXME(kenta): is this check necessary?
+		//if stream.ID%2 == 1 && stream {
+		//	err = fmt.Errorf("outgoing stream with id %d received a payload packet but has not received a header yet",
+		//		packet.ID)
+		//	provider.CloseStreamWithError(stream, err)
+		//	return err
+		//}
 
 		// if the chunk is zero-length, the stream has been closed
 
@@ -588,6 +591,11 @@ func (n *Node) Probe(addr string) error {
 
 func (n *Node) Push(services []string, headers map[string]string, body io.ReadCloser) (*Stream, error) {
 	providers := n.providers.getProviders(services...)
+
+	// TODO(kenta): add additional strategies for selecting providers
+	rand.Shuffle(len(providers), func(i, j int) {
+		providers[i], providers[j] = providers[j], providers[i]
+	})
 
 	for _, provider := range providers {
 		stream, err := provider.Push(services, headers, body)

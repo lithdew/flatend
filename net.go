@@ -44,6 +44,10 @@ func (c *Context) WriteHeader(key, val string) {
 }
 
 func (c *Context) Write(data []byte) (int, error) {
+	if len(data) == 0 { // disallow writing zero bytes
+		return 0, nil
+	}
+
 	if !c.written {
 		packet := ServiceResponsePacket{
 			ID:      c.ID,
@@ -57,10 +61,6 @@ func (c *Context) Write(data []byte) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-	}
-
-	if len(data) == 0 { // disallow writing zero bytes
-		return 0, nil
 	}
 
 	for i := 0; i < len(data); i += ChunkSize {

@@ -1,3 +1,55 @@
+## API Options
+
+By default, Flatend comes prepackaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with [LetsEncrypt](https://letsencrypt.org/) support.
+
+More prepackaged services are planned to be coming out soon from the Flatend team for creating production-ready WebSocket, TCP, and gRPC APIs out of Flatend services.
+
+All of these prepackaged services are fully configurable with the list of configurable values specified below. Apart from configuring these services, services created using Flatend APIs may also be configured as shown below.
+
+### Go
+
+A Flatend node may be configured like so:
+
+```go
+import "github.com/lithdew/flatend"
+
+node := &flatend.Node{
+    // The public address to advertise to other nodes that may want to use this nodes' services.
+    // Default is empty to indicate that the node does not advertise its services.
+    PublicAddr: "...",
+
+    // An Ed25519 secret key that uniquely identifies this node.
+    SecretKey: kademlia.SecretKey{...},
+
+    // Open this node up to other Flatend nodes on a specified TCP address.
+    // Default is empty to indicate that this node only caters its services to other Flatend nodes
+    // it manually connects to.
+    BindAddrs: []flatend.BindFunc{
+        flatend.BindAny(), // Randomly-selected open port.
+        flatend.BindTCP(":3000"), // Specified IPv4/IPv6 address.
+        flatend.BindTCPv4("127.0.0.1:3000"), // Specified IPv4 address.
+        flatend.BindTCPv6("[::1]:3000"), // Specified IPv6 addresss
+    }
+}
+```
+
+### NodeJS
+
+A Flatend node may be configured like so:
+
+```typescript
+import nacl from "tweetnacl";
+import {Node, ID} from "flatend";
+
+node := new Node({
+    // Ed25519 public key, IPv4/IPv6 host, and unsigned 16-bit integer port.
+    id: new ID(publicKey, host, port),
+    
+    // Ed25519 keypair that is unique to this node.
+    keys: nacl.sign.keyPair(), 
+})
+```
+
 ## `ctx` Explained
 
 ### Go
@@ -108,56 +160,4 @@ nocache = true
 [[http.routes]]
 path = "POST /:id"
 services = ["a", "b", "c"]
-```
-
-## Options
-
-By default, Flatend comes prepackaged with a fast, scalable, highly-configurable production-ready HTTP server written in Go with [LetsEncrypt](https://letsencrypt.org/) support.
-
-More prepackaged services are planned to be coming out soon from the Flatend team for creating production-ready WebSocket, TCP, and gRPC APIs out of Flatend services.
-
-All of these prepackaged services are fully configurable with the list of configurable values specified below. Apart from configuring these services, services created using Flatend APIs may also be configured as shown below.
-
-### Go
-
-A Flatend node may be configured like so:
-
-```go
-import "github.com/lithdew/flatend"
-
-node := &flatend.Node{
-    // The public address to advertise to other nodes that may want to use this nodes' services.
-    // Default is empty to indicate that the node does not advertise its services.
-    PublicAddr: "...",
-
-    // An Ed25519 secret key that uniquely identifies this node.
-    SecretKey: kademlia.SecretKey{...},
-
-    // Open this node up to other Flatend nodes on a specified TCP address.
-    // Default is empty to indicate that this node only caters its services to other Flatend nodes
-    // it manually connects to.
-    BindAddrs: []flatend.BindFunc{
-        flatend.BindAny(), // Randomly-selected open port.
-        flatend.BindTCP(":3000"), // Specified IPv4/IPv6 address.
-        flatend.BindTCPv4("127.0.0.1:3000"), // Specified IPv4 address.
-        flatend.BindTCPv6("[::1]:3000"), // Specified IPv6 addresss
-    }
-}
-```
-
-### NodeJS
-
-A Flatend node may be configured like so:
-
-```typescript
-import nacl from "tweetnacl";
-import {Node, ID} from "flatend";
-
-node := new Node({
-    // Ed25519 public key, IPv4/IPv6 host, and unsigned 16-bit integer port.
-    id: new ID(publicKey, host, port),
-    
-    // Ed25519 keypair that is unique to this node.
-    keys: nacl.sign.keyPair(), 
-})
 ```

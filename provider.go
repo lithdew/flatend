@@ -168,7 +168,7 @@ func (p *Provider) Addr() string {
 	if p.id != nil {
 		return Addr(p.id.Host, p.id.Port)
 	} else {
-		return "???"
+		return "<anon>"
 	}
 }
 

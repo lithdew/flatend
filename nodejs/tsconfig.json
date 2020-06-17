@@ -3,22 +3,20 @@
     /* Visit https://aka.ms/tsconfig.json to read more about this file */
 
     /* Basic Options */
-//    "incremental": true,
+    //    "incremental": true,
     /* Enable incremental compilation */
     "target": "es2020",
     /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019', 'ES2020', or 'ESNEXT'. */
     "module": "commonjs",
     /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', 'es2020', or 'ESNext'. */
-    "lib": [
-      "es6"
-    ],
+    "lib": ["es6"],
     /* Specify library files to be included in the compilation. */
     // "allowJs": true,                       /* Allow javascript files to be compiled. */
     // "checkJs": true,                       /* Report errors in .js files. */
-     "jsx": "preserve",                     /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
-     "declaration": true,                   /* Generates corresponding '.d.ts' file. */
-//     "declarationMap": true,                /* Generates a sourcemap for each corresponding '.d.ts' file. */
-//     "sourceMap": true,                     /* Generates corresponding '.map' file. */
+    "jsx": "preserve" /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */,
+    "declaration": true /* Generates corresponding '.d.ts' file. */,
+    //     "declarationMap": true,                /* Generates a sourcemap for each corresponding '.d.ts' file. */
+    //     "sourceMap": true,                     /* Generates corresponding '.map' file. */
     // "outFile": "./",                       /* Concatenate and emit output to single file. */
     "outDir": "dist",
     /* Redirect output structure to the directory. */
@@ -38,12 +36,12 @@
     /* Enable all strict type-checking options. */
     "noImplicitAny": true,
     /* Raise error on expressions and declarations with an implied 'any' type. */
-     "strictNullChecks": true,              /* Enable strict null checks. */
-     "strictFunctionTypes": true,           /* Enable strict checking of function types. */
-     "strictBindCallApply": true,           /* Enable strict 'bind', 'call', and 'apply' methods on functions. */
-     "strictPropertyInitialization": true,  /* Enable strict checking of property initialization in classes. */
-     "noImplicitThis": true,                /* Raise error on 'this' expressions with an implied 'any' type. */
-     "alwaysStrict": true,                  /* Parse in strict mode and emit "use strict" for each source file. */
+    "strictNullChecks": true /* Enable strict null checks. */,
+    "strictFunctionTypes": true /* Enable strict checking of function types. */,
+    "strictBindCallApply": true /* Enable strict 'bind', 'call', and 'apply' methods on functions. */,
+    "strictPropertyInitialization": true /* Enable strict checking of property initialization in classes. */,
+    "noImplicitThis": true /* Raise error on 'this' expressions with an implied 'any' type. */,
+    "alwaysStrict": true /* Parse in strict mode and emit "use strict" for each source file. */,
 
     /* Additional Checks */
     // "noUnusedLocals": true,                /* Report errors on unused locals. */
@@ -82,6 +80,5 @@
     "forceConsistentCasingInFileNames": true
     /* Disallow inconsistently-cased references to the same file. */
   },
-  "exclude": ["example",
-    "dist", "node_modules"]
+  "exclude": ["example", "dist", "node_modules"]
 }

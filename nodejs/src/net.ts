@@ -1,14 +1,24 @@
-import {promisify} from "util";
+import { promisify } from "util";
 import dns from "dns";
 import assert from "assert";
+import ipaddr, { IPv4, IPv6 } from "ipaddr.js";
 
-export const resolve = async (addr: string): Promise<[string, number]> => {
-    const [host, port] = addr.trim().split(":");
+export const resolve = async (addr: string): Promise<[IPv4 | IPv6, number]> => {
+  const fields = addr.trim().split(":");
 
-    const resolvedHost = (await promisify(dns.lookup)(host)).address;
+  const host = fields.slice(0, fields.length - 1).join(":");
+  const port = fields.pop()!;
 
-    const resolvedPort = parseInt(port);
-    assert(resolvedPort >= 0 && resolvedPort < 65536);
+  let resolvedHost = ipaddr.parse((await promisify(dns.lookup)(host)).address);
+  if (
+    resolvedHost.kind() === "ipv6" &&
+    (<IPv6>resolvedHost).isIPv4MappedAddress()
+  ) {
+    resolvedHost = (<IPv6>resolvedHost).toIPv4Address();
+  }
 
-    return [resolvedHost, resolvedPort];
-}
+  const resolvedPort = parseInt(port);
+  assert(resolvedPort >= 0 && resolvedPort < 65536);
+
+  return [resolvedHost, resolvedPort];
+};

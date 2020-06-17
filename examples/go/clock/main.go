@@ -82,7 +82,7 @@ func main() {
 					check(err)
 				}
 
-				fmt.Printf("[%d] Got a response! Their current time is: %s\n", i, string(res))
+				fmt.Printf("[%d] Got a response! Their current time is: '%s'\n", i, string(res))
 			}
 		}
 	}()

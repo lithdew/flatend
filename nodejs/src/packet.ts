@@ -308,19 +308,19 @@ export class DataPacket implements Packet {
 }
 
 export class FindNodeRequest implements Packet {
-    target: ID
+    target: Uint8Array
 
-    public constructor(target: ID) {
+    public constructor(target: Uint8Array) {
         this.target = target;
     }
 
     public encode(): Buffer {
-        return this.target.encode();
+        return Buffer.from(this.target);
     }
 
     public static decode(buf: Buffer): [FindNodeRequest, Buffer] {
-        const [target, leftover] = ID.decode(buf);
-        buf = leftover;
+        const target = buf.slice(0, nacl.sign.publicKeyLength);
+        buf = buf.slice(nacl.sign.publicKeyLength)
         return [new FindNodeRequest(target), buf]
     }
 }
@@ -373,10 +373,11 @@ const xor = (a: Uint8Array, b: Uint8Array): Uint8Array => {
 }
 
 export class Table {
+    buckets: Array<Array<ID>> = [...Array(nacl.sign.publicKeyLength * 8)].map(() => []);
+
     pub: Uint8Array;
     cap: number = 16;
     length: number = 0;
-    buckets: Array<Array<ID>> = [...Array(nacl.sign.publicKeyLength * 8)].map(() => []);
 
     public constructor(pub: Uint8Array = Buffer.alloc(nacl.sign.publicKeyLength)) {
         this.pub = pub;

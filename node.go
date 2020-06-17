@@ -56,10 +56,6 @@ func (n *Node) Start(addrs ...string) error {
 		bindPort uint16
 	)
 
-	//if n.SecretKey == kademlia.ZeroPrivateKey {
-	//	n.Secre
-	//}
-
 	if n.SecretKey != kademlia.ZeroPrivateKey {
 		if n.PublicAddr != "" { // resolve the address
 			addr, err := net.ResolveTCPAddr("tcp", n.PublicAddr)

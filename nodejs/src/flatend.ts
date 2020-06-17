@@ -1,6 +1,16 @@
 import "core-js";
 
-import {DataPacket, HandshakePacket, ID, Opcode, ServiceRequestPacket, ServiceResponsePacket, Table} from "./packet";
+import {
+    DataPacket,
+    FindNodeRequest,
+    FindNodeResponse,
+    HandshakePacket,
+    ID,
+    Opcode,
+    ServiceRequestPacket,
+    ServiceResponsePacket,
+    Table
+} from "./packet";
 import nacl from "tweetnacl";
 import assert from "assert";
 import {MonteSocket} from "./monte";
@@ -130,23 +140,23 @@ export class Context extends Duplex {
     }
 }
 
-class Client {
-    addr: string;
-    sock: MonteSocket;
-
-    count: number; // streams count
-    streams: Map<number, Context>; // stream id -> stream
-
+class Provider {
     id?: ID;
-    services: string[] = [];
+    sock: MonteSocket;
+    services: Set<string>
 
+    count: number = 0;
+    streams: Map<number, Context> = new Map<number, Context>();
 
-    constructor(addr: string, sock: MonteSocket) {
-        this.addr = addr;
+    constructor(id: ID | undefined, sock: MonteSocket, services = new Set<string>()) {
+        this.id = id;
         this.sock = sock;
+        this.services = services;
+    }
 
-        this.count = 0;
-        this.streams = new Map<number, Context>();
+    get addr(): string {
+        if (!this.id) return "???";
+        return this.id.host + ":" + this.id.port;
     }
 }
 
@@ -164,9 +174,9 @@ const resolve = async (addr: string): Promise<[string, number]> => {
 }
 
 export class Node {
-    #services: Map<string, WeakSet<Client>> = new Map<string, WeakSet<Client>>();
-    #providers: WeakMap<MonteSocket, Client> = new WeakMap<MonteSocket, Client>();
-    #clients: Map<string, Client> = new Map<string, Client>();
+    #services: Map<string, WeakSet<Provider>> = new Map<string, WeakSet<Provider>>();
+    #providers: WeakMap<MonteSocket, Provider> = new WeakMap<MonteSocket, Provider>();
+    #clients: Map<string, MonteSocket> = new Map<string, MonteSocket>();
     #handlers: Map<string, Handler> = new Map<string, Handler>();
     #table: Table;
 
@@ -198,63 +208,95 @@ export class Node {
     public async dial(addr: string) {
         const [host, port] = await resolve(addr);
 
-        let client = this.#clients.get(addr);
-        if (!client) {
-            client = new Client(host + ":" + port, await MonteSocket.connect({host: host, port: port}));
+        let sock = this.#clients.get(addr);
+        if (!sock) {
+            sock = await MonteSocket.connect({host, port});
 
-            client.sock.once('end', () => {
-                client!.services.forEach(service => this.#services.get(service)?.delete(client!));
-                this.#providers.delete(client!.sock);
-                this.#clients.delete(client!.addr);
+            sock.on('data', this._data.bind(this));
+            sock.on('error', console.error);
 
-                const reconnect = async () => {
-                    console.log(`Trying to reconnect to ${client!.addr}. Sleeping for 1s.`);
-
-                    try {
-                        await this.dial(client!.addr);
-                    } catch (err) {
-                        setTimeout(reconnect, 1000);
-                    }
-                };
-
-                setTimeout(reconnect, 1000);
-            });
-
-            client.sock.on('data', this._data.bind(this));
-            client.sock.on('error', console.error);
-
-            this.#clients.set(client.addr, client);
-            this.#providers.set(client.sock, client);
+            this.#clients.set(addr, sock);
         }
 
-        await this.probe(client);
+        // client.sock.once('end', () => {
+        //     client!.services.forEach(service => this.#services.get(service)?.delete(client!));
+        //
+        //     if (client!.id) this.#table.delete(client!.id.publicKey);
+        //
+        //     this.#providers.delete(client!.sock);
+        //     this.#clients.delete(client!.addr!);
+        //
+        //     let count = 8;
+        //
+        //     const reconnect = async () => {
+        //         if (count-- === 0) {
+        //             console.log(`Tried 8 times reconnecting to ${client!.addr}. Giving up.`);
+        //             return;
+        //         }
+        //
+        //         console.log(`Trying to reconnect to ${client!.addr}. Sleeping for 1s.`);
+        //
+        //         try {
+        //             await this.dial(client!.addr!);
+        //         } catch (err) {
+        //             setTimeout(reconnect, 1000);
+        //         }
+        //     };
+        //
+        //     setTimeout(reconnect, 1000);
+        // });
+
+        await this.probe(sock);
     }
 
-    private async probe(client: Client) {
+    private createHandshakePacket(): HandshakePacket {
         let packet = new HandshakePacket(null, this.services, null);
         if (!this.anonymous) {
             packet.id = this.#id;
             packet.signature = Buffer.from(nacl.sign(packet.payload, this.#keys!.secretKey));
         }
+        return packet;
+    }
 
-        const res = await client.sock.request(Buffer.concat([Buffer.of(Opcode.Handshake), packet.encode()]));
-        packet = HandshakePacket.decode(res)[0];
+    private onPeerJoin(sock: MonteSocket, packet: HandshakePacket): Provider {
+        let id: ID | undefined;
 
         if (packet.id && packet.signature) {
-            // assert(typeof packet.id.host === "string" && ip.isEqual(packet.id.host, host) && packet.id.port === port);
-            assert(nacl.sign.detached.verify(packet.payload, packet.signature, packet.id.publicKey));
-
-            client.id = packet.id;
+            if (!nacl.sign.detached.verify(packet.payload, packet.signature, packet.id.publicKey)) {
+                throw new Error(`Handshake packet signature is malformed.`);
+            }
+            id = packet.id;
         }
 
-        client.services = packet.services;
+        if (id) this.#table.update(id);
 
-        packet.services.forEach(service => {
-            if (!this.#services.has(service)) this.#services.set(service, new WeakSet<Client>());
-            this.#services.get(service)!.add(client!);
+        let provider = this.#providers.get(sock);
+        if (!provider) {
+            provider = new Provider(id, sock, new Set<string>(packet.services));
+            this.#providers.set(sock, provider);
+        }
+
+        provider.services.forEach(service => {
+            if (!this.#services.has(service)) this.#services.set(service, new WeakSet<Provider>());
+            this.#services.get(service)!.add(provider!);
         });
 
-        console.log(`Successfully dialed ${client.addr}. Services: [${packet.services.join(', ')}]`);
+        return provider;
+    }
+
+    private async probe(sock: MonteSocket) {
+        const packet = HandshakePacket.decode(
+            await sock.request(
+                Buffer.concat([
+                    Buffer.of(Opcode.Handshake),
+                    this.createHandshakePacket().encode(),
+                ]),
+            ),
+        )[0];
+
+        const provider = this.onPeerJoin(sock, packet);
+
+        console.log(`Successfully dialed ${provider.addr}. Services: [${packet.services.join(', ')}]`);
     }
 
     private _data({sock, seq, body}: { sock: MonteSocket, seq: number, body: Buffer }) {
@@ -266,9 +308,12 @@ export class Node {
                 break;
             case Opcode.Handshake: {
                 const packet = HandshakePacket.decode(body)[0];
-                if (packet.id && packet.signature) {
-                    assert(nacl.sign.detached.verify(packet.payload, packet.signature, packet.id.publicKey));
-                }
+                const provider = this.onPeerJoin(sock, packet);
+
+                console.log(`${provider.addr} has connected to you. Services: [${[...provider.services].join(", ")}]`);
+
+                sock.send(seq, this.createHandshakePacket().encode());
+
                 return;
             }
             case Opcode.ServiceRequest: {
@@ -318,6 +363,11 @@ export class Node {
                 provider.streams.delete(packet.id);
                 ctx.push(null);
 
+                return;
+            }
+            case Opcode.FindNodeRequest: {
+                const packet = FindNodeRequest.decode(body)[0];
+                sock.send(seq, new FindNodeResponse(this.#table.closestTo(packet.target)).encode())
                 return;
             }
             default: {

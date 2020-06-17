@@ -212,39 +212,12 @@ export class Node {
         if (!sock) {
             sock = await MonteSocket.connect({host, port});
 
+            this.#clients.set(addr, sock);
+
             sock.on('data', this._data.bind(this));
             sock.on('error', console.error);
-
-            this.#clients.set(addr, sock);
+            sock.once('end', () => this.#clients.delete(addr));
         }
-
-        // client.sock.once('end', () => {
-        //     client!.services.forEach(service => this.#services.get(service)?.delete(client!));
-        //
-        //     if (client!.id) this.#table.delete(client!.id.publicKey);
-        //
-        //     this.#providers.delete(client!.sock);
-        //     this.#clients.delete(client!.addr!);
-        //
-        //     let count = 8;
-        //
-        //     const reconnect = async () => {
-        //         if (count-- === 0) {
-        //             console.log(`Tried 8 times reconnecting to ${client!.addr}. Giving up.`);
-        //             return;
-        //         }
-        //
-        //         console.log(`Trying to reconnect to ${client!.addr}. Sleeping for 1s.`);
-        //
-        //         try {
-        //             await this.dial(client!.addr!);
-        //         } catch (err) {
-        //             setTimeout(reconnect, 1000);
-        //         }
-        //     };
-        //
-        //     setTimeout(reconnect, 1000);
-        // });
 
         await this.probe(sock);
     }
@@ -274,6 +247,12 @@ export class Node {
         if (!provider) {
             provider = new Provider(id, sock, new Set<string>(packet.services));
             this.#providers.set(sock, provider);
+
+            sock.once('end', () => {
+                if (id) this.#table.delete(id.publicKey);
+                provider!.services.forEach(service => this.#services.get(service)?.delete(provider!));
+                this.#providers.delete(sock);
+            });
         }
 
         provider.services.forEach(service => {
@@ -297,6 +276,27 @@ export class Node {
         const provider = this.onPeerJoin(sock, packet);
 
         console.log(`Successfully dialed ${provider.addr}. Services: [${packet.services.join(', ')}]`);
+
+        sock.once('end', () => {
+            let count = 8;
+
+            const reconnect = async () => {
+                if (count-- === 0) {
+                    console.log(`Tried 8 times reconnecting to ${provider.addr}. Giving up.`);
+                    return;
+                }
+
+                console.log(`Trying to reconnect to ${provider.addr}. Sleeping for 1s.`);
+
+                try {
+                    await this.dial(provider.addr!);
+                } catch (err) {
+                    setTimeout(reconnect, 1000);
+                }
+            };
+
+            setTimeout(reconnect, 1000);
+        });
     }
 
     private _data({sock, seq, body}: { sock: MonteSocket, seq: number, body: Buffer }) {

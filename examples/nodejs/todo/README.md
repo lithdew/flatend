@@ -4,12 +4,13 @@ Ye 'ole todo list example using SQLite.
 
 ```
 $ flatend
-2020/06/17 01:27:03 Listening for microservices on '127.0.0.1:9000'.
+2020/06/17 01:27:03 Listening for Flatend nodes on '127.0.0.1:9000'.
 2020/06/17 01:27:03 Listening for HTTP requests on '[::]:3000'.
-2020/06/17 01:27:10 ??? has connected to you. Services: [all_todos add_todo remove_todo done_todo]
+2020/06/17 01:27:10 <anon> has connected to you. Services: [all_todos add_todo remove_todo done_todo]
 
-$ node index.js
-Successfully dialed 127.0.0.1:9000. Services: []
+$ DEBUG=* node index.js 
+  flatend You are now connected to 127.0.0.1:9000. Services: [] +0ms
+  flatend Discovered 0 peer(s). +11ms   
 
 $ http://localhost:3000/
 ```
@@ -42,39 +43,49 @@ service = "done_todo"
 ```
 
 ```js
-const {Node} = require("flatend");
+const { Node } = require("flatend");
 const Database = require("better-sqlite3");
 
 const db = new Database(":memory:");
-db.exec(`CREATE TABLE todo (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, state TEXT)`);
+db.exec(
+  `CREATE TABLE todo (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, state TEXT)`
+);
 
-const all = async ctx => ctx.json(await db.prepare(`SELECT id, content, state FROM todo`).all());
+const all = async (ctx) =>
+  ctx.json(await db.prepare(`SELECT id, content, state FROM todo`).all());
 
-const add = async ctx => {
-    const content = ctx.headers["params.content"];
-    ctx.json(await db.prepare(`INSERT INTO todo (content, state) VALUES (?, '')`).run(content));
-}
+const add = async (ctx) => {
+  const content = ctx.headers["params.content"];
+  ctx.json(
+    await db
+      .prepare(`INSERT INTO todo (content, state) VALUES (?, '')`)
+      .run(content)
+  );
+};
 
-const remove = async ctx => {
-    const id = ctx.headers["params.id"]
-    ctx.json(await db.prepare(`DELETE FROM todo WHERE id = ?`).run(id))
-}
+const remove = async (ctx) => {
+  const id = ctx.headers["params.id"];
+  ctx.json(await db.prepare(`DELETE FROM todo WHERE id = ?`).run(id));
+};
 
-const done = async ctx => {
-    const id = ctx.headers["params.id"]
-    ctx.json(await db.prepare(`UPDATE todo SET state = 'done' WHERE id = ?`).run(id));
-}
+const done = async (ctx) => {
+  const id = ctx.headers["params.id"];
+  ctx.json(
+    await db.prepare(`UPDATE todo SET state = 'done' WHERE id = ?`).run(id)
+  );
+};
 
 const main = async () => {
-    const node = new Node();
+  await Node.start({
+    addrs: ["127.0.0.1:9000"],
+    services: {
+      all_todos: all,
+      add_todo: add,
+      remove_todo: remove,
+      done_todo: done,
+    },
+  });
+};
 
-    node.register('all_todos', all);
-    node.register('add_todo', add);
-    node.register('remove_todo', remove);
-    node.register('done_todo', done);
-
-    await node.dial("127.0.0.1:9000");
-}
-
-main().catch(err => console.error(err));
+main().catch((err) => console.error(err));
 ```

@@ -168,7 +168,7 @@ func (p *Provider) Addr() string {
 	if p.id != nil {
 		return Addr(p.id.Host, p.id.Port)
 	} else {
-		return "???"
+		return "<anon>"
 	}
 }
 
@@ -224,7 +224,7 @@ func (p *Providers) getProviders(services ...string) []*Provider {
 	return providers
 }
 
-func (p *Providers) register(conn *monte.Conn, id *kademlia.ID, services []string, outgoing bool) *Provider {
+func (p *Providers) register(conn *monte.Conn, id *kademlia.ID, services []string, outgoing bool) (*Provider, bool) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -253,7 +253,7 @@ func (p *Providers) register(conn *monte.Conn, id *kademlia.ID, services []strin
 		p.services[service][conn] = struct{}{}
 	}
 
-	return provider
+	return provider, exists
 }
 
 func (p *Providers) deregister(conn *monte.Conn) *Provider {

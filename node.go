@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -32,6 +33,9 @@ type Node struct {
 
 	providers *Providers
 
+	tableLock sync.Mutex
+	table     *kademlia.Table
+
 	clientsLock sync.Mutex
 	clients     map[string]*monte.Client
 
@@ -48,31 +52,40 @@ func GenerateSecretKey() kademlia.PrivateKey {
 }
 
 func (n *Node) Start(addrs ...string) error {
-	if n.PublicAddr != "" && n.SecretKey == kademlia.ZeroPrivateKey {
-		n.SecretKey = GenerateSecretKey()
-	}
-
 	var (
 		bindHost net.IP
 		bindPort uint16
 	)
 
-	if n.PublicAddr != "" {
-		addr, err := net.ResolveTCPAddr("tcp", n.PublicAddr)
-		if err != nil {
-			return err
-		}
+	if n.SecretKey != kademlia.ZeroPrivateKey {
+		if n.PublicAddr != "" { // resolve the address
+			addr, err := net.ResolveTCPAddr("tcp", n.PublicAddr)
+			if err != nil {
+				return err
+			}
 
-		bindHost = addr.IP
-		if bindHost == nil {
-			return fmt.Errorf("'%s' is an invalid host: it must be an IPv4 or IPv6 address", addr.IP)
-		}
+			bindHost = addr.IP
+			if bindHost == nil {
+				return fmt.Errorf("'%s' is an invalid host: it must be an IPv4 or IPv6 address", addr.IP)
+			}
 
-		if addr.Port <= 0 || addr.Port >= math.MaxUint16 {
-			return fmt.Errorf("'%d' is an invalid port", addr.Port)
-		}
+			if addr.Port <= 0 || addr.Port >= math.MaxUint16 {
+				return fmt.Errorf("'%d' is an invalid port", addr.Port)
+			}
 
-		bindPort = uint16(addr.Port)
+			bindPort = uint16(addr.Port)
+		} else { // get a random public address
+			ln, err := net.Listen("tcp", ":0")
+			if err != nil {
+				return fmt.Errorf("unable to listen on any port: %w", err)
+			}
+			bindAddr := ln.Addr().(*net.TCPAddr)
+			bindHost = bindAddr.IP
+			bindPort = uint16(bindAddr.Port)
+			if err := ln.Close(); err != nil {
+				return fmt.Errorf("failed to close listener for getting avaialble port: %w", err)
+			}
+		}
 	}
 
 	start := false
@@ -81,12 +94,16 @@ func (n *Node) Start(addrs ...string) error {
 		return errors.New("listener already started")
 	}
 
-	if n.PublicAddr != "" {
+	if n.SecretKey != kademlia.ZeroPrivateKey {
 		n.id = &kademlia.ID{
 			Pub:  n.SecretKey.Public(),
 			Host: bindHost,
 			Port: bindPort,
 		}
+
+		n.table = kademlia.NewTable(n.id.Pub)
+	} else {
+		n.table = kademlia.NewTable(kademlia.ZeroPublicKey)
 	}
 
 	n.providers = NewProviders()
@@ -102,6 +119,8 @@ func (n *Node) Start(addrs ...string) error {
 		if err != nil {
 			return err
 		}
+
+		log.Printf("Listening for Flatend nodes on '%s'.", ln.Addr().String())
 
 		n.wg.Add(1)
 		go func() {
@@ -121,6 +140,8 @@ func (n *Node) Start(addrs ...string) error {
 			return err
 		}
 
+		log.Printf("Listening for Flatend nodes on '%s'.", ln.Addr().String())
+
 		n.wg.Add(1)
 		go func() {
 			defer n.wg.Done()
@@ -137,7 +158,87 @@ func (n *Node) Start(addrs ...string) error {
 		}
 	}
 
+	n.Bootstrap()
+
 	return nil
+}
+
+func (n *Node) Bootstrap() {
+	var mu sync.Mutex
+
+	var pub kademlia.PublicKey
+	if n.id != nil {
+		pub = n.id.Pub
+	}
+
+	busy := make(chan struct{}, kademlia.DefaultBucketSize)
+	queue := make(chan kademlia.ID, kademlia.DefaultBucketSize)
+
+	visited := make(map[kademlia.PublicKey]struct{})
+
+	n.tableLock.Lock()
+	ids := n.table.ClosestTo(pub, kademlia.DefaultBucketSize)
+	n.tableLock.Unlock()
+
+	if len(ids) == 0 {
+		return
+	}
+
+	visited[pub] = struct{}{}
+	for _, id := range ids {
+		queue <- id
+		visited[id.Pub] = struct{}{}
+	}
+
+	var results []kademlia.ID
+
+	for len(queue) > 0 || len(busy) > 0 {
+		select {
+		case id := <-queue:
+			busy <- struct{}{}
+			go func() {
+				defer func() { <-busy }()
+
+				client := n.getClient(Addr(id.Host, id.Port))
+
+				conn, err := client.Get()
+				if err != nil {
+					return
+				}
+
+				err = n.probe(conn)
+				if err != nil {
+					return
+				}
+
+				req := n.createFindNodeRequest().AppendTo([]byte{OpcodeFindNodeRequest})
+
+				buf, err := conn.Request(req[:0], req)
+				if err != nil {
+					return
+				}
+
+				res, _, err := kademlia.UnmarshalFindNodeResponse(buf)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				for _, id := range res.Closest {
+					if _, seen := visited[id.Pub]; !seen {
+						visited[id.Pub] = struct{}{}
+						results = append(results, id)
+						queue <- id
+					}
+				}
+				mu.Unlock()
+			}()
+		default:
+			time.Sleep(16 * time.Millisecond)
+		}
+	}
+
+	log.Printf("Discovered %d peer(s).", len(results))
 }
 
 func (n *Node) Shutdown() {
@@ -170,6 +271,12 @@ func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
 		return
 	}
 
+	n.tableLock.Lock()
+	if provider.id != nil {
+		n.table.Delete(provider.id.Pub)
+	}
+	n.tableLock.Unlock()
+
 	addr := provider.Addr()
 
 	log.Printf("%s has disconnected from you. Services: %s", addr, provider.Services())
@@ -190,7 +297,7 @@ func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
 			Max:    1 * time.Second,
 		}
 
-		for {
+		for i := 0; i < 8; i++ { // 8 attempts max
 			err := n.Probe(addr)
 			if err == nil {
 				break
@@ -201,6 +308,8 @@ func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
 			log.Printf("Trying to reconnect to %s. Sleeping for %s.", addr, duration)
 			time.Sleep(duration)
 		}
+
+		log.Printf("Tried 8 times reconnecting to %s. Giving up.", addr)
 	}()
 }
 
@@ -227,14 +336,23 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 
 		// register the microservice if it hasn't been registered before
 
-		provider := n.providers.register(ctx.Conn(), packet.ID, packet.Services, false)
-		log.Printf("%s has connected to you. Services: %s", provider.Addr(), provider.Services())
+		provider, exists := n.providers.register(ctx.Conn(), packet.ID, packet.Services, false)
+		if !exists {
+			log.Printf("%s has connected. Services: %s", provider.Addr(), provider.Services())
+		}
+
+		// register the peer to the routing table
+
+		if packet.ID != nil {
+			n.tableLock.Lock()
+			n.table.Update(*packet.ID)
+			n.tableLock.Unlock()
+		}
 
 		// always reply back with what services we provide, and our
 		// id if we want to publicly advertise our microservice
 
 		return ctx.Reply(n.createHandshakePacket(body[:0]).AppendTo(body[:0]))
-
 	case OpcodeServiceRequest:
 		provider := n.providers.findProvider(ctx.Conn())
 		if provider == nil {
@@ -271,6 +389,7 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 			go func() {
 				ctx := acquireContext(packet.Headers, stream.Reader, stream.ID, ctx.Conn())
 				defer releaseContext(ctx)
+				defer ctx.Body.Close()
 
 				handler(ctx)
 
@@ -356,12 +475,13 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 			return err
 		}
 
-		if stream.ID%2 == 1 && stream.Header == nil {
-			err = fmt.Errorf("outgoing stream with id %d received a payload packet but has not received a header yet",
-				packet.ID)
-			provider.CloseStreamWithError(stream, err)
-			return err
-		}
+		// FIXME(kenta): is this check necessary?
+		//if stream.ID%2 == 1 && stream {
+		//	err = fmt.Errorf("outgoing stream with id %d received a payload packet but has not received a header yet",
+		//		packet.ID)
+		//	provider.CloseStreamWithError(stream, err)
+		//	return err
+		//}
 
 		// if the chunk is zero-length, the stream has been closed
 
@@ -377,36 +497,41 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 		}
 
 		return nil
+	case OpcodeFindNodeRequest:
+		packet, _, err := kademlia.UnmarshalFindNodeRequest(body)
+		if err != nil {
+			return err
+		}
+
+		n.tableLock.Lock()
+		res := kademlia.FindNodeResponse{Closest: n.table.ClosestTo(packet.Target, kademlia.DefaultBucketSize)}
+		n.tableLock.Unlock()
+
+		return ctx.Reply(res.AppendTo(nil))
 	}
 
 	return fmt.Errorf("unknown opcode %d", opcode)
 }
 
-func (n *Node) Probe(addr string) error {
-	resolved, err := net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		return err
-	}
-
+func (n *Node) getClient(addr string) *monte.Client {
 	n.clientsLock.Lock()
-	client, exists := n.clients[resolved.String()]
+	defer n.clientsLock.Unlock()
+
+	client, exists := n.clients[addr]
 	if !exists {
 		client = &monte.Client{
-			Addr:      resolved.String(),
+			Addr:      addr,
 			Handler:   n,
 			ConnState: n,
 		}
-		n.clients[resolved.String()] = client
-	}
-	n.clientsLock.Unlock()
-
-	conn, err := client.Get()
-	if err != nil {
-		return err
+		n.clients[addr] = client
 	}
 
-	// pre-register the provider
-	n.providers.register(conn, nil, nil, true)
+	return client
+}
+
+func (n *Node) probe(conn *monte.Conn) error {
+	provider, exists := n.providers.register(conn, nil, nil, true)
 
 	req := n.createHandshakePacket(nil).AppendTo([]byte{OpcodeHandshake})
 	res, err := conn.Request(req[:0], req)
@@ -422,24 +547,55 @@ func (n *Node) Probe(addr string) error {
 		return err
 	}
 
-	addr = "???"
 	if packet.ID != nil {
-		addr = Addr(packet.ID.Host, packet.ID.Port)
-		if !packet.ID.Host.Equal(resolved.IP) || packet.ID.Port != uint16(resolved.Port) {
-			return fmt.Errorf("dialed '%s' which advertised '%s'", resolved, addr)
-		}
+		//addr = Addr(packet.ID.Host, packet.ID.Port)
+		//if !packet.ID.Host.Equal(resolved.IP) || packet.ID.Port != uint16(resolved.Port) {
+		//	return provider, fmt.Errorf("dialed '%s' which advertised '%s'", resolved, addr)
+		//}
 
 		// update the provider with id and services info
-		n.providers.register(conn, packet.ID, packet.Services, true)
+		provider, _ = n.providers.register(conn, packet.ID, packet.Services, true)
+		if !exists {
+			log.Printf("You are now connected to %s. Services: %s", provider.Addr(), provider.Services())
+		} else {
+			log.Printf("Re-probed %s. Services: %s", provider.Addr(), provider.Services())
+		}
+
+		// update the routing table
+		n.tableLock.Lock()
+		n.table.Update(*packet.ID)
+		n.tableLock.Unlock()
 	}
 
-	log.Printf("You are now connected to %s. Services: %s", addr, packet.Services)
+	return nil
+}
+
+func (n *Node) Probe(addr string) error {
+	resolved, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	conn, err := n.getClient(resolved.String()).Get()
+	if err != nil {
+		return err
+	}
+
+	err = n.probe(conn)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (n *Node) Push(services []string, headers map[string]string, body io.ReadCloser) (*Stream, error) {
 	providers := n.providers.getProviders(services...)
+
+	// TODO(kenta): add additional strategies for selecting providers
+	rand.Shuffle(len(providers), func(i, j int) {
+		providers[i], providers[j] = providers[j], providers[i]
+	})
 
 	for _, provider := range providers {
 		stream, err := provider.Push(services, headers, body)
@@ -462,6 +618,14 @@ func (n *Node) createHandshakePacket(buf []byte) HandshakePacket {
 		packet.Signature = n.SecretKey.Sign(packet.AppendPayloadTo(buf))
 	}
 	return packet
+}
+
+func (n *Node) createFindNodeRequest() kademlia.FindNodeRequest {
+	var req kademlia.FindNodeRequest
+	if n.id != nil {
+		req.Target = n.id.Pub
+	}
+	return req
 }
 
 func (n *Node) getServiceNames() []string {

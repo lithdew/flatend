@@ -1,10 +1,11 @@
 const { Node } = require("flatend");
+const fs = require("fs");
 
 const main = async () => {
   await Node.start({
     addrs: ["127.0.0.1:9000"],
     services: {
-      pipe: (ctx) => ctx.pipe(ctx),
+      file: (ctx) => fs.createReadStream("index.js").pipe(ctx),
     },
   });
 };

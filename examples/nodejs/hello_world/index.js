@@ -1,9 +1,12 @@
-const {Node} = require("flatend");
+const { Node } = require("flatend");
 
 const main = async () => {
-    const node = new Node();
-    node.register('hello_world', ctx => ctx.send("Hello world!"));
-    await node.dial("127.0.0.1:9000");
-}
+  await Node.start({
+    addrs: ["127.0.0.1:9000"],
+    services: {
+      hello_world: (ctx) => ctx.send("Hello world!"),
+    },
+  });
+};
 
-main().catch(err => console.error(err));
+main().catch((err) => console.error(err));

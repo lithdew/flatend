@@ -176,6 +176,14 @@ github.com/lithdew/bytesutil v0.0.0-20200409052507-d98389230a59 h1:CQpoOQecHxhvg
 github.com/lithdew/bytesutil v0.0.0-20200409052507-d98389230a59/go.mod h1:89JlULMIJ/+YWzAp5aHXgAD2d02S2mY+a+PMgXDtoNs=
 github.com/lithdew/kademlia v0.0.0-20200613105650-31ee52d03942 h1:DQXR82hmvzLI7FbEB76yNPkK0+oIvi14yD8hJ/QN4io=
 github.com/lithdew/kademlia v0.0.0-20200613105650-31ee52d03942/go.mod h1:8kjcvkw5riLRd20sStElDh5j8GAKJtqy2iP/+5X25Po=
+github.com/lithdew/kademlia v0.0.0-20200617074201-67980f4e9a80 h1:vNyElVOalHsQ9QNaS6zM88fsDEIktTJ2oyk0uMojst8=
+github.com/lithdew/kademlia v0.0.0-20200617074201-67980f4e9a80/go.mod h1:8kjcvkw5riLRd20sStElDh5j8GAKJtqy2iP/+5X25Po=
+github.com/lithdew/kademlia v0.0.0-20200617081927-d292507b30d7 h1:CZd84KMw/wT0L2nOFZJDokaeaO+e2kR1IUwfxbtiJQg=
+github.com/lithdew/kademlia v0.0.0-20200617081927-d292507b30d7/go.mod h1:8kjcvkw5riLRd20sStElDh5j8GAKJtqy2iP/+5X25Po=
+github.com/lithdew/kademlia v0.0.0-20200617090246-b0f19e4e7756 h1:7I+iFbO9cavDy/O9N9b//iM+SmPwOO6UpMYE3ycgeBw=
+github.com/lithdew/kademlia v0.0.0-20200617090246-b0f19e4e7756/go.mod h1:8kjcvkw5riLRd20sStElDh5j8GAKJtqy2iP/+5X25Po=
+github.com/lithdew/kademlia v0.0.0-20200617103555-3b0f902b24c0 h1:2Ar4IFLONvqQDX84ff8g4UQOXiuuN8PslVARM2KSE6g=
+github.com/lithdew/kademlia v0.0.0-20200617103555-3b0f902b24c0/go.mod h1:8kjcvkw5riLRd20sStElDh5j8GAKJtqy2iP/+5X25Po=
 github.com/lithdew/monte v0.0.0-20200613174427-105bad77ff52 h1:zYygDC3AydtQfkizBiglK6DEyRoZoTlZ/InYLaFUPFk=
 github.com/lithdew/monte v0.0.0-20200613174427-105bad77ff52/go.mod h1:qisbxmkjwkE+XOLjCiJe+z1U4f95XxF5Hfrk21Rb1yc=
 github.com/lithdew/reliable v0.0.0-20200506103725-7df64908b057 h1:CBhKVPym/7ZzY7ascOG93XSTlJuqrmIU/Hd0UDHC1TA=

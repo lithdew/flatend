@@ -4,6 +4,8 @@ import (
 	"github.com/lithdew/flatend"
 	"os"
 	"os/signal"
+	"strconv"
+	"sync/atomic"
 )
 
 func check(err error) {
@@ -12,16 +14,15 @@ func check(err error) {
 	}
 }
 
-func helloWorld(ctx *flatend.Context) {
-	ctx.WriteHeader("Content-Type", "text/plain; charset=utf-8")
-	ctx.Write([]byte("Hello world!"))
-}
-
 func main() {
+	counter := uint64(0)
+
 	node := &flatend.Node{
-		SecretKey: flatend.GenerateSecretKey(),
 		Services: map[string]flatend.Handler{
-			"hello_world": helloWorld,
+			"count": func(ctx *flatend.Context) {
+				current := atomic.AddUint64(&counter, 1) - 1
+				ctx.Write(strconv.AppendUint(nil, current, 10))
+			},
 		},
 	}
 	check(node.Start("127.0.0.1:9000"))

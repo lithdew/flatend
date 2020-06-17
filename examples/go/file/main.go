@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/lithdew/flatend"
+	"io"
 	"os"
 	"os/signal"
 )
@@ -12,16 +13,18 @@ func check(err error) {
 	}
 }
 
-func helloWorld(ctx *flatend.Context) {
-	ctx.WriteHeader("Content-Type", "text/plain; charset=utf-8")
-	ctx.Write([]byte("Hello world!"))
-}
-
 func main() {
 	node := &flatend.Node{
-		SecretKey: flatend.GenerateSecretKey(),
 		Services: map[string]flatend.Handler{
-			"hello_world": helloWorld,
+			"file": func(ctx *flatend.Context) {
+				f, err := os.Open("main.go")
+				if err != nil {
+					ctx.Write([]byte(err.Error()))
+					return
+				}
+				_, _ = io.Copy(ctx, f)
+				f.Close()
+			},
 		},
 	}
 	check(node.Start("127.0.0.1:9000"))

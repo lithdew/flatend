@@ -1,12 +1,10 @@
 import "core-js";
 
-import {DataPacket, HandshakePacket, ID, Opcode, ServiceRequestPacket, ServiceResponsePacket} from "./packet";
+import {DataPacket, HandshakePacket, ID, Opcode, ServiceRequestPacket, ServiceResponsePacket, Table} from "./packet";
 import nacl from "tweetnacl";
 import assert from "assert";
 import {MonteSocket} from "./monte";
 import * as dns from "dns";
-import * as net from "net";
-import * as ip from "ip";
 import {promisify} from "util";
 import {Duplex, finished} from "stream";
 
@@ -19,8 +17,6 @@ interface NodeIdentityOpts {
 const identityOpts = (opts: any): opts is NodeIdentityOpts => opts && ("keys" in opts && "id" in opts);
 
 type NodeOpts = NodeIdentityOpts;
-
-const lookup = async (hostname: string) => net.isIP(hostname) ? hostname : (await promisify(dns.lookup)(hostname)).address;
 
 export class Context extends Duplex {
     public headers: { [key: string]: string }
@@ -156,11 +152,23 @@ class Client {
 
 type Handler = (ctx: Context) => void;
 
+const resolve = async (addr: string): Promise<[string, number]> => {
+    const [host, port] = addr.trim().split(":");
+
+    const resolvedHost = (await promisify(dns.lookup)(host)).address;
+
+    const resolvedPort = parseInt(port);
+    assert(resolvedPort >= 0 && resolvedPort < 65536);
+
+    return [resolvedHost, resolvedPort];
+}
+
 export class Node {
     #services: Map<string, WeakSet<Client>> = new Map<string, WeakSet<Client>>();
     #providers: WeakMap<MonteSocket, Client> = new WeakMap<MonteSocket, Client>();
     #clients: Map<string, Client> = new Map<string, Client>();
     #handlers: Map<string, Handler> = new Map<string, Handler>();
+    #table: Table;
 
     readonly #id: ID | null = null;
     readonly #keys: nacl.SignKeyPair | null = null;
@@ -170,6 +178,8 @@ export class Node {
             this.#id = opts.id;
             this.#keys = opts.keys;
         }
+
+        this.#table = new Table(this.#id?.publicKey ?? Buffer.alloc(nacl.sign.publicKeyLength));
     }
 
     get anonymous(): boolean {
@@ -186,13 +196,7 @@ export class Node {
     }
 
     public async dial(addr: string) {
-        const fields = addr.trim().split(":");
-        assert(fields.length === 2);
-
-        const host = await lookup(fields[0]);
-
-        const port = parseInt(fields[1]);
-        assert(port > 0 && port < 65536)
+        const [host, port] = await resolve(addr);
 
         let client = this.#clients.get(addr);
         if (!client) {

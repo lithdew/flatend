@@ -104,9 +104,9 @@ func (n *Node) Start(addrs ...string) error {
 			Port: bindPort,
 		}
 
-		n.table = kademlia.NewTable(*n.id)
+		n.table = kademlia.NewTable(n.id.Pub)
 	} else {
-		n.table = kademlia.NewTable(kademlia.ZeroID)
+		n.table = kademlia.NewTable(kademlia.ZeroPublicKey)
 	}
 
 	n.providers = NewProviders()

@@ -373,22 +373,22 @@ const xor = (a: Uint8Array, b: Uint8Array): Uint8Array => {
 }
 
 export class Table {
-    id: ID;
+    pub: Uint8Array;
     cap: number = 16;
     length: number = 0;
     buckets: Array<Array<ID>> = [...Array(nacl.sign.publicKeyLength * 8)].map(() => []);
 
-    public constructor(id: ID) {
-        this.id = id;
+    public constructor(pub: Uint8Array = Buffer.alloc(nacl.sign.publicKeyLength)) {
+        this.pub = pub;
     }
 
     private bucketIndex(pub: Uint8Array): number {
-        if (Buffer.compare(pub, this.id.publicKey) === 0) return 0;
-        return leadingZeros(xor(pub, this.id.publicKey));
+        if (Buffer.compare(pub, this.pub) === 0) return 0;
+        return leadingZeros(xor(pub, this.pub));
     }
 
     public update(id: ID): UpdateResult {
-        if (Buffer.compare(id.publicKey, this.id.publicKey) === 0) return UpdateResult.Fail;
+        if (Buffer.compare(id.publicKey, this.pub) === 0) return UpdateResult.Fail;
 
         const bucket = this.buckets[this.bucketIndex(id.publicKey)];
 
@@ -439,7 +439,7 @@ export class Table {
 
         fill(m);
         while ((l >= 0 && fill(l)) || (r < this.buckets.length && fill(r))) {
-            [l, r] = [l-1, r+1];
+            [l, r] = [l - 1, r + 1];
         }
 
         return closest;

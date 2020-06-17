@@ -119,7 +119,7 @@ Take note though that `ctx *flatend.Context` implements the `io.Writer`, and exp
 - The very moment the function returns, the response to a request is considered to be fully written.
 - Any panics in a function are not caught.
 
-Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
+Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server Listening for Flatend nodes at `127.0.0.1:9000`.
 
 ```go
 package main
@@ -191,7 +191,7 @@ The helper methods exposed in a `ctx: Context` are:
 - `ctx.json(data: object)` encodes `data` into a JSON string, writes it as a response, and closes `ctx`.
 - `await ctx.body({limit?: 65536})` reads the request body of `ctx`, with an optimal maximum size limit pre-configured to 65536 bytes. It throws an error if the size limit is exceeded.
 
-Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server listening for microservices at `127.0.0.1:9000`.
+Now, we need just need to register `helloWorld` as a handler for the service `hello_world`, and hook it up to our HTTP server Listening for Flatend nodes at `127.0.0.1:9000`.
 
 ```typescript
 import {Node, Context} from "flatend";

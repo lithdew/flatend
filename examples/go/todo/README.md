@@ -4,7 +4,7 @@ Ye 'ole todo list example using SQLite.
 
 ```
 $ flatend
-2020/06/17 01:27:03 Listening for microservices on '127.0.0.1:9000'.
+2020/06/17 01:27:03 Listening for Flatend nodes on '127.0.0.1:9000'.
 2020/06/17 01:27:03 Listening for HTTP requests on '[::]:3000'.
 2020/06/17 01:27:10 ??? has connected to you. Services: [all_todos add_todo remove_todo done_todo]
 

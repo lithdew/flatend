@@ -19,6 +19,7 @@ func helloWorld(ctx *flatend.Context) {
 
 func main() {
 	node := &flatend.Node{
+		SecretKey: flatend.GenerateSecretKey(),
 		Services: map[string]flatend.Handler{
 			"hello_world": helloWorld,
 		},

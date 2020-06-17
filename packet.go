@@ -20,6 +20,8 @@ const (
 	OpcodeServiceRequest
 	OpcodeServiceResponse
 	OpcodeData
+	OpcodeFindNodeRequest
+	OpcodeFindNodeResponse
 )
 
 type ServiceRequestPacket struct {

@@ -15,13 +15,13 @@ interface MonteSocketProps extends DuplexOptions {
     secret: Uint8Array;
 }
 
-enum MonteSocketReadState {
+enum ReadState {
     Length,
     Body,
 }
 
 export class MonteSocket extends Duplex {
-    #state: MonteSocketReadState = MonteSocketReadState.Length;
+    #state: ReadState = ReadState.Length;
     #length: number = 0;
 
     #pending: EventEmitter = new EventEmitter();
@@ -50,6 +50,19 @@ export class MonteSocket extends Duplex {
         this.#sock.on('ready', () => this.emit('ready'));
         this.#sock.on('timeout', () => this.emit('timeout'));
     }
+
+    // public static async listen(port?: number, hostname?: string): Promise<net.Server> {
+    //     const server = new net.Server();
+    //
+    //     await new Promise((resolve, reject) => {
+    //         server.on('error', reject);
+    //         server.listen(port, hostname, () => {
+    //             resolve();
+    //         });
+    //     });
+    //
+    //     return server;
+    // }
 
     public static async connect(opts: MonteSocketConnectOpts): Promise<MonteSocket> {
         const sock = new net.Socket();
@@ -161,14 +174,14 @@ export class MonteSocket extends Duplex {
     private _readable(): void {
         while (true) {
             switch (this.#state) {
-                case MonteSocketReadState.Length:
+                case ReadState.Length:
                     const header: Buffer = this.#sock.read(4);
                     if (!header) return;
 
                     this.#length = header.readUInt32BE();
-                    this.#state = MonteSocketReadState.Body;
+                    this.#state = ReadState.Body;
                     break;
-                case MonteSocketReadState.Body:
+                case ReadState.Body:
                     let body: Buffer = this.#sock.read(this.#length);
                     if (!body) return;
 
@@ -193,7 +206,7 @@ export class MonteSocket extends Duplex {
                     } else {
                         this.#pending.emit(evt, body);
                     }
-                    this.#state = MonteSocketReadState.Length;
+                    this.#state = ReadState.Length;
                     break;
             }
         }

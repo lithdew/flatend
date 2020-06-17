@@ -1,2 +1,5 @@
-export {Context, Node} from "./flatend";
-export {ID} from "./packet";
+import "core-js";
+
+export {Node} from "./flatend";
+export {Context} from "./context";
+export {ID, Table, UpdateResult} from "./kademlia";

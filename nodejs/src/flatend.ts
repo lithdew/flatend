@@ -25,6 +25,7 @@ class Provider {
   id?: ID;
   sock: MonteSocket;
   services: Set<string>;
+  init: boolean = false;
 
   count: number = 0;
   streams: Map<number, Context> = new Map<number, Context>();
@@ -98,10 +99,10 @@ export class Node {
     if (id) this.#table.update(id);
 
     let provider = this.#providers.get(sock);
-    let exists = provider;
+    let exists = provider && provider.id && provider.init;
 
     if (!exists) {
-      provider = new Provider(id, sock, new Set<string>(packet.services));
+      provider!.init = true;
 
       sock.once("end", () => {
         if (id) this.#table.delete(id.publicKey);
@@ -110,9 +111,10 @@ export class Node {
         );
         this.#providers.delete(sock);
       });
-
-      this.#providers.set(sock, provider);
     }
+
+    provider!.id = id;
+    provider!.services = new Set<string>(...packet.services);
 
     provider!.services.forEach((service) => {
       if (!this.#services.has(service))
@@ -240,11 +242,12 @@ export class Node {
     if (!sock) {
       sock = await MonteSocket.connect({ host: host.toString(), port });
 
+      this.#providers.set(sock, new Provider(undefined, sock));
+      this.#clients.set(addr, sock);
+
       sock.once("end", () => this.#clients.delete(addr));
       sock.on("data", this._data.bind(this));
       sock.on("error", debug);
-
-      this.#clients.set(addr, sock);
     }
 
     return sock;
@@ -304,6 +307,8 @@ export class Node {
     switch (opcode) {
       case Opcode.Handshake: {
         const packet = HandshakePacket.decode(body)[0];
+
+        this.#providers.set(sock, new Provider(undefined, sock));
         const [provider, exists] = this.registerProvider(sock, packet);
 
         if (!exists) {
@@ -322,8 +327,8 @@ export class Node {
         const packet = ServiceRequestPacket.decode(body)[0];
 
         const provider = this.#providers.get(sock);
-
         assert(provider, "Socket is not registered as a provider.");
+
         assert(
           !provider.streams.has(packet.id),
           `Stream with ID ${packet.id} already exists.`

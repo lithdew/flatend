@@ -8,8 +8,9 @@ $ flatend
 2020/06/17 02:12:53 Listening for HTTP requests on '[::]:3000'.
 2020/06/17 02:12:59 <anon> has connected to you. Services: [count]
 
-$ node index.js 
-Successfully dialed 127.0.0.1:9000. Services: []
+$ DEBUG=* node index.js
+  flatend You are now connected to 127.0.0.1:9000. Services: [] +0ms
+  flatend Discovered 0 peer(s). +14ms
 
 $ http://localhost:3000
 0
@@ -33,17 +34,18 @@ service = "count"
 ```
 
 ```js
-const {Node} = require("flatend");
+const { Node } = require("flatend");
 
-let counter = 0
+let counter = 0;
 
-const count = ctx => ctx.send(`${counter++}`);
+const count = (ctx) => ctx.send(`${counter++}`);
 
 const main = async () => {
-    const node = new Node();
-    node.register('count', count);
-    await node.dial("127.0.0.1:9000");
-}
+  await Node.start({
+    addrs: ["127.0.0.1:9000"],
+    services: { count: count },
+  });
+};
 
-main().catch(err => console.error(err));
+main().catch((err) => console.error(err));
 ```

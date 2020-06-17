@@ -12,8 +12,9 @@ $ flatend
 $ http://localhost:3000/hello
 no nodes were able to process your request for service(s): [hello_world]
 
-$ node index.js
-Successfully dialed 127.0.0.1:9000. Services: []
+$ DEBUG=* node index.js
+  flatend You are now connected to 127.0.0.1:9000. Services: [] +0ms
+  flatend Discovered 0 peer(s). +11ms
 
 $ http://localhost:3000/hello
 Hello world!
@@ -31,13 +32,16 @@ service = "hello_world"
 ```
 
 ```js
-const {Node} = require("flatend");
+const { Node } = require("flatend");
 
 const main = async () => {
-    const node = new Node();
-    node.register('hello_world', ctx => ctx.send("Hello world!"));
-    await node.dial("127.0.0.1:9000");
-}
+  await Node.start({
+    addrs: ["127.0.0.1:9000"],
+    services: {
+      hello_world: (ctx) => ctx.send("Hello world!"),
+    },
+  });
+};
 
-main().catch(err => console.error(err));
+main().catch((err) => console.error(err));
 ```

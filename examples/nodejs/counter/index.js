@@ -1,13 +1,14 @@
-const {Node} = require("flatend");
+const { Node } = require("flatend");
 
-let counter = 0
+let counter = 0;
 
-const count = ctx => ctx.send(`${counter++}`);
+const count = (ctx) => ctx.send(`${counter++}`);
 
 const main = async () => {
-    const node = new Node();
-    node.register('count', count);
-    await node.dial("127.0.0.1:9000");
-}
+  await Node.start({
+    addrs: ["127.0.0.1:9000"],
+    services: { count: count },
+  });
+};
 
-main().catch(err => console.error(err));
+main().catch((err) => console.error(err));

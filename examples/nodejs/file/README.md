@@ -8,47 +8,24 @@ $ flatend
 2020/06/17 02:36:30 Listening for HTTP requests on '[::]:3000'.
 2020/06/17 02:36:41 <anon> has connected to you. Services: [file]
 
-$ go run main.go 
-2020/06/17 02:36:41 You are now connected to 127.0.0.1:9000. Services: []
+$ DEBUG=* node index.js
+  flatend You are now connected to 127.0.0.1:9000. Services: [] +0ms
+  flatend Discovered 0 peer(s). +10ms
 
 $ http://localhost:3000/
-package main
+const { Node } = require("flatend");
+const fs = require("fs");
 
-import (
-	"github.com/lithdew/flatend"
-	"io"
-	"os"
-	"os/signal"
-)
+const main = async () => {
+  await Node.start({
+    addrs: ["127.0.0.1:9000"],
+    services: {
+      file: (ctx) => fs.createReadStream("index.js").pipe(ctx),
+    },
+  });
+};
 
-func check(err error)  {
-	if err != nil {
-		panic(err)
-	}
-}
-
-func main() {
-	node := &flatend.Node{
-		Services: map[string]flatend.Handler{
-			"file": func(ctx *flatend.Context) {
-				f, err := os.Open("main.go")
-				if err != nil {
-					ctx.Write([]byte(err.Error()))
-					return
-				}
-				_, _ = io.Copy(ctx, f)
-				f.Close()
-			},
-		},
-	}
-	check(node.Start("127.0.0.1:9000"))
-
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-	<-ch
-
-	node.Shutdown()
-}
+main().catch((err) => console.error(err));
 ```
 
 ```toml
@@ -62,42 +39,18 @@ path = "GET /"
 service = "file"
 ```
 
-```go
-package main
+```js
+const { Node } = require("flatend");
+const fs = require("fs");
 
-import (
-	"github.com/lithdew/flatend"
-	"io"
-	"os"
-	"os/signal"
-)
+const main = async () => {
+  await Node.start({
+    addrs: ["127.0.0.1:9000"],
+    services: {
+      file: (ctx) => fs.createReadStream("index.js").pipe(ctx),
+    },
+  });
+};
 
-func check(err error)  {
-	if err != nil {
-		panic(err)
-	}
-}
-
-func main() {
-	node := &flatend.Node{
-		Services: map[string]flatend.Handler{
-			"file": func(ctx *flatend.Context) {
-				f, err := os.Open("main.go")
-				if err != nil {
-					ctx.Write([]byte(err.Error()))
-					return
-				}
-				_, _ = io.Copy(ctx, f)
-				f.Close()
-			},
-		},
-	}
-	check(node.Start("127.0.0.1:9000"))
-
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-	<-ch
-
-	node.Shutdown()
-}
+main().catch((err) => console.error(err));
 ```

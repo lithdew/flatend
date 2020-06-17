@@ -4,7 +4,7 @@ A demo of peer discovery and bidirectional streaming, and Flatend by itself with
 
 Run `go run main.go` on one terminal. Run `go run main.go clock` on several other terminals.
 
-Watch nodes randomly querying and responding to each others requests for their current time.
+Watch nodes randomly query and respond to each others requests regarding their current systems time.
 
 ```
 [terminal 1] $ go run main.go

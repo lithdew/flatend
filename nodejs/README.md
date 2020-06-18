@@ -21,7 +21,7 @@
 * Fully-encrypted, end-to-end, bidirectional streaming RPC via [Monte](https://github.com/lithdew/monte).
 * Automatic reconnect/retry upon crashes or connection loss.
 * Zero-hassle serverless: every function is a microservice.
-* Stream multiple gigabytes data across microservices.
+* Stream multiple gigabytes of data across microservices.
 
 ## Gateways
 
@@ -178,7 +178,7 @@ $ go run main.go
 ```
 
 <p align="center">
-    <img align="center" src="https://lh3.googleusercontent.com/G1Lb2tE81_T6546dw_sVmWV9l2NeLSa2QjJomnampMpVuGJBAob_kFfBRj6ORWuufKw0sfCzVZ-xQp2x1hlFxTdIOgwz7eNZdJ62K7q_Qy3aiKRNQB33xlU1i8D2B9S_OHx3rCZWFru9VTkhde-w-Jc_hTUdF9CRHgt2q0Q1hBI_Bos7gou5ktxVJisSkpHzqkVAHOSa6jfeO9yYmLm75o7vy7zgRr1U0peiBpIHJnnLe6HUO5a7GPsprlm7x8SF3Wtlt27gWPcPQ9jpCoesbtcczA_adzhgBLNJp_vyQsY4elQEfm2pdTdHla2TG2j_B2p9b4qipqmnvBg4DCTltwg5XEm-ArJMcb1M01OXDTUT0bsQf8KikWTLh-0aJnkmmR3WpCnR3ELhGkB8WL2XYN4dOcxsjrafWdk6sR2GZVTJcZTTlcqZ0PRKC2TdBV6PWe4zZCfDb_Obui1jYJcft9I9vrLDHFnWyzEdnwTS4pomu5jIUlimHIsKC5xwHkAmtAZThvofWV4ttodUeZ8FPsbNQarq8YR_QUtuDpjWEcVGREftYSxl_BQ6x4Y8UhdTpl_aYZe6tWmAu_G4mHOJl9ZGoZ8cALOmsAKJVUULOM561vpgDvAj3b7i4iFTDTZuDW6mhEF8UL3hrnFUfjGsg57YvTnfEo5bO_179lobNiKkSMt5gKqRdcsvESf5=w1000-h306-no?authuser=1" />
+    <img align="center" src="https://lh3.googleusercontent.com/pw/ACtC-3erxmTK_ro3rabuHCnaMGPgGDm0xx0GDhefsa30cR-dpSK-gSFCR4obN_PXiiXBjIodXHbVhMzuLZ9hR6ZJD7uq59sfflvDIJLdsk9lQjgAiMP1_6UhmCn9LJ6NmLf33Ts_zVfu7xeLs-2Pyk__jn4=w1000-h306-no" />
 </p>
 
 Check out more examples [here](https://github.com/lithdew/flatend/tree/master/examples/go). I recommend checking out the [Todo List](https://github.com/lithdew/flatend/tree/master/examples/go/todo) one which stores data in [SQLite](http://sqlite.org/).
@@ -261,7 +261,7 @@ $ DEBUG=* node index.js
 ```
 
 <p align="center">
-    <img src="https://lh3.googleusercontent.com/lyYJ8DX9mz8ANQk4D1vvDIEamjj2s4vwzuz6hHTdQ8EoFZPsTWW4hWUnwhSzCeLAjyH3UVlalonjaiqOC-qTynLVXLAyn_IPC26fxioNa8xlMM2pDeLQ84mjOs4-C-iYYePr947KlJfWVicr_DmE2jIF2vHtDtFqW4dFTDk2b8RQ52BkhAl8nTA8D2wLhKuVvr-OXhDi-zaIzvAT9WvhjPmfowF1yNPC1UL1KYmpODXNFrAKzjk-fWfqWPspvZyxpavaRYZ5iFWcdo3fVNv-tbrLD3Hs0y3Tmk1CZRejvhHj9mKv9N53G02fObG6M6sQXGhYrNoCioK0-yiCvf_zepvO2M-7JhFZUj618V1ck9JgGxHOj3hWxn0WXSxs032xKMv5qFCOVu-f-qlj4gZ1k1LyUoJ8CytnbD9nv0wmWFXJDRwS_rHrzk62QZEMZgn7n1XrJurR0QGiYtS61gK-3_kCNzgqxyerIBZ5Irr58nT2Ged2LqQhfA3YMwPsPBMX_hk2oY3hipx_61HgBHyq_y9jlOljrj0F79PxmaFs9HyvsTr8UtihXP7D8vVCiHf1NUBLg7Z6RtXEfcflfDFkRXoyWGDeKL8P7cBOfcEeNoM1sz1Okk5Ag3Jpy-9XTS36bo_Ts8tMCggLCUTG5k6pO9Am-eWq2erdgXTSlvL7ywGq4Y8NcTQ3vV20UV3n=w800-h373-no?authuser=1" />
+    <img src="https://lh3.googleusercontent.com/pw/ACtC-3eMjx0Nzshllz7xu2YIVUtFNwx4swwf8yZX56ojxXuGUv22z5c5a7NxoaRN4d2AUTdlQa7U3DEosJ_wdBBTSpT8ZSpuo3SbddZxOqO1B98ZsJ_B6rA3_H7bibw2KQKOkOtC64k3i_mJpWB3vfAvpeg=w800-h373-no" />
 </p>
 
 Check out more examples [here](https://github.com/lithdew/flatend/tree/master/examples/nodejs). I recommend checking out the [Todo List](https://github.com/lithdew/flatend/tree/master/examples/nodejs/todo) one which stores data in [SQLite](http://sqlite.org/).

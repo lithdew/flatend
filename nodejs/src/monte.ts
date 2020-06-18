@@ -122,7 +122,7 @@ export class MonteSocket extends Duplex {
   public encrypt(buf: Buffer): Buffer {
     const nonce = Buffer.alloc(12);
     nonce.writeBigUInt64BE(this.#writeNonce);
-    this.#writeNonce++;
+    this.#writeNonce = this.#writeNonce + BigInt(1);
 
     const cipher = crypto.createCipheriv("aes-256-gcm", this.#secret, nonce, {
       authTagLength: 16,
@@ -138,7 +138,7 @@ export class MonteSocket extends Duplex {
 
     const nonce = Buffer.alloc(12);
     nonce.writeBigUInt64BE(this.#readNonce);
-    this.#readNonce++;
+    this.#readNonce = this.#readNonce + BigInt(1);
 
     const decipher = crypto.createDecipheriv(
       "aes-256-gcm",

@@ -3,7 +3,7 @@
   "description": "Production-ready microservice mesh networks with just a few lines of code.",
   "author": "Kenta Iwasaki",
   "license": "MIT",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

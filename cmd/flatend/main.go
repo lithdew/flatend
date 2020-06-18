@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"github.com/BurntSushi/toml"
@@ -135,7 +136,16 @@ func main() {
 		}
 
 		defer func() {
-			check(srv.Close())
+			srv.SetKeepAlivesEnabled(false)
+
+			timeout := cfg.GetShutdownTimeout()
+			if timeout > 0 {
+				ctx, cancel := context.WithTimeout(context.Background(), timeout)
+				check(srv.Shutdown(ctx))
+				cancel()
+			} else {
+				check(srv.Close())
+			}
 		}()
 
 		addrs := cfg.GetAddrs()
@@ -172,7 +182,16 @@ func main() {
 			}
 
 			defer func() {
-				check(redirect.Close())
+				redirect.SetKeepAlivesEnabled(false)
+
+				timeout := cfg.GetShutdownTimeout()
+				if timeout > 0 {
+					ctx, cancel := context.WithTimeout(context.Background(), timeout)
+					check(redirect.Shutdown(ctx))
+					cancel()
+				} else {
+					check(redirect.Close())
+				}
 			}()
 
 			for _, addr := range addrs {

@@ -18,6 +18,8 @@ var Methods = map[string]struct{}{
 	http.MethodPatch:  {},
 }
 
+const DefaultShutdownTimeout = 10 * time.Second
+
 type Config struct {
 	Addr string
 	HTTP []ConfigHTTP
@@ -74,6 +76,13 @@ type ConfigHTTP struct {
 	}
 
 	Routes []ConfigRoute
+}
+
+func (h ConfigHTTP) GetShutdownTimeout() time.Duration {
+	if h.Timeout.Shutdown.Duration < 0 {
+		return DefaultShutdownTimeout
+	}
+	return h.Timeout.Shutdown.Duration
 }
 
 func (h ConfigHTTP) GetDomains() []string {

@@ -1,33 +1,58 @@
 import { Duplex, finished } from "stream";
-import { MonteSocket } from "./monte";
+import { Stream, STREAM_CHUNK_SIZE } from "./stream";
+import { ID } from "./kademlia";
+import util from "util";
 import { DataPacket, Opcode, ServiceResponsePacket } from "./packet";
+import { Provider } from "./provider";
+import { chunkBuffer } from "./node";
+
+export type Handler = (ctx: Context) => void;
 
 export class Context extends Duplex {
-  public headers: { [key: string]: string };
-
-  _id: number;
-  _sock: MonteSocket;
-  _written: boolean = false;
+  _provider: Provider;
+  _stream: Stream;
+  _headersWritten = false;
   _headers: { [key: string]: string } = {};
 
+  headers: { [key: string]: string };
+
+  get id(): ID {
+    return this._provider.id!;
+  }
+
   constructor(
-    id: number,
-    sock: MonteSocket,
+    provider: Provider,
+    stream: Stream,
     headers: { [key: string]: string }
   ) {
-    super({ allowHalfOpen: true });
+    super();
 
+    this._provider = provider;
+    this._stream = stream;
     this.headers = headers;
 
-    this._id = id;
-    this._sock = sock;
+    // pipe stream body to context
 
-    finished(this, { readable: false }, () => {
-      this._writeHeader();
-      const packet = new DataPacket(this._id, Buffer.of());
-      this._sock.send(
-        0,
-        Buffer.concat([Buffer.of(Opcode.Data), packet.encode()])
+    setImmediate(async () => {
+      for await (const frame of this._stream.body) {
+        this.push(frame);
+      }
+      this.push(null);
+    });
+
+    // write stream eof when stream writable is closed
+
+    setImmediate(async () => {
+      await util.promisify(finished)(this, { readable: false });
+
+      await this._writeHeader();
+
+      const payload = new DataPacket(this._stream.id, Buffer.of()).encode();
+      await this._provider.write(
+        this._provider.rpc.message(
+          0,
+          Buffer.concat([Buffer.of(Opcode.Data), payload])
+        )
       );
     });
   }
@@ -39,7 +64,7 @@ export class Context extends Duplex {
 
   send(data: string | Buffer | Uint8Array) {
     this.write(data);
-    this.end();
+    if (!this.writableEnded) this.end();
   }
 
   json(data: any) {
@@ -47,15 +72,42 @@ export class Context extends Duplex {
     this.send(JSON.stringify(data));
   }
 
-  _writeHeader() {
-    if (this._written) return;
+  _read(size: number) {
+    this._stream.body._read(size);
+  }
 
-    this._written = true;
-    const response = new ServiceResponsePacket(this._id, true, this._headers);
-    this._sock.send(
-      0,
-      Buffer.concat([Buffer.of(Opcode.ServiceResponse), response.encode()])
-    );
+  async body(opts?: { limit?: number }): Promise<Buffer> {
+    const limit = opts?.limit ?? 2 ** 16;
+
+    let buf = Buffer.of();
+    for await (const chunk of this) {
+      buf = Buffer.concat([buf, chunk]);
+      if (buf.byteLength > limit) {
+        throw new Error(
+          `Exceeded max allowed body size limit of ${limit} byte(s).`
+        );
+      }
+    }
+
+    return buf;
+  }
+
+  async _writeHeader() {
+    if (!this._headersWritten) {
+      this._headersWritten = true;
+
+      const payload = new ServiceResponsePacket(
+        this._stream.id,
+        true,
+        this._headers
+      ).encode();
+      await this._provider.write(
+        this._provider.rpc.message(
+          0,
+          Buffer.concat([Buffer.of(Opcode.ServiceResponse), payload])
+        )
+      );
+    }
   }
 
   _write(
@@ -63,70 +115,24 @@ export class Context extends Duplex {
     encoding: BufferEncoding,
     callback: (error?: Error | null) => void
   ) {
-    if (chunk.length === 0) return;
+    const write = async () => {
+      await this._writeHeader();
 
-    this._writeHeader();
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding);
 
-    for (let i = 0; i < chunk.byteLength; i += 2048) {
-      let start = i;
+      for (const chunk of chunkBuffer(buf, STREAM_CHUNK_SIZE)) {
+        const payload = new DataPacket(this._stream.id, chunk).encode();
+        await this._provider.write(
+          this._provider.rpc.message(
+            0,
+            Buffer.concat([Buffer.of(Opcode.Data), payload])
+          )
+        );
+      }
+    };
 
-      let end = i + 2048;
-      if (end > chunk.byteLength) end = chunk.byteLength;
-
-      const packet = new DataPacket(this._id, chunk.slice(start, end));
-      this._sock.send(
-        0,
-        Buffer.concat([Buffer.of(Opcode.Data), packet.encode()])
-      );
-    }
-
-    callback();
-  }
-
-  async body(opts: { limit: number } = { limit: 65536 }): Promise<Buffer> {
-    return await new Promise((resolve, reject) => {
-      let buffer: Buffer[] = [];
-      let received: number = 0;
-      let complete: boolean = false;
-
-      const done = (err?: Error) => {
-        if (complete) return;
-
-        complete = true;
-        if (!err) {
-          resolve(Buffer.concat(buffer));
-        } else {
-          reject(err);
-        }
-      };
-
-      const onData = (data: Buffer) => {
-        if (complete) return;
-        received += data.byteLength;
-        if (received > opts.limit) {
-          done(new Error(`request entity too large`));
-          return;
-        }
-        buffer.push(data);
-      };
-
-      const onEnd = (err: Error) => done(err);
-
-      const onClose = () => {
-        this.removeListener("data", onData);
-        this.removeListener("error", onEnd);
-        this.removeListener("end", onEnd);
-        this.removeListener("close", onClose);
-      };
-
-      this.on("data", onData);
-      this.on("error", onEnd);
-      this.on("end", onEnd);
-      this.on("close", onClose);
-    });
-  }
-
-  _read(size: number) {
-    return;
+    write()
+      .then(() => callback())
+      .catch((error) => callback(error));
   }
 }

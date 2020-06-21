@@ -1,7 +1,6 @@
 import nacl from "tweetnacl";
 import ipaddr, { IPv4, IPv6 } from "ipaddr.js";
 import assert from "assert";
-import { Packet } from "./packet";
 
 export enum UpdateResult {
   New,
@@ -12,7 +11,7 @@ export enum UpdateResult {
 
 const leadingZeros = (buf: Uint8Array): number => {
   const i = buf.findIndex((b) => b != 0);
-  if (i == -1) return buf.byteLength * 8;
+  if (i === -1) return buf.byteLength * 8;
 
   let b = buf[i] >>> 0;
   if (b === 0) return i * 8 + 8;
@@ -25,7 +24,7 @@ const xor = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   return c;
 };
 
-export class ID implements Packet {
+export class ID {
   publicKey: Uint8Array = Buffer.alloc(nacl.sign.publicKeyLength);
   host: IPv4 | IPv6;
   port: number = 0;
@@ -55,7 +54,7 @@ export class ID implements Packet {
   }
 
   public static decode(buf: Buffer): [ID, Buffer] {
-    const publicKey = buf.slice(0, nacl.sign.publicKeyLength);
+    const publicKey = Uint8Array.from(buf.slice(0, nacl.sign.publicKeyLength));
     buf = buf.slice(nacl.sign.publicKeyLength);
 
     const hostHeader = buf.readUInt8();
@@ -118,7 +117,7 @@ export class Table {
   public delete(pub: Uint8Array): boolean {
     const bucket = this.buckets[this.bucketIndex(pub)];
     const i = bucket.findIndex((id) => Buffer.compare(id.publicKey, pub) === 0);
-    if (i >= 1) {
+    if (i >= 0) {
       bucket.splice(i, 1);
       this.length--;
       return true;

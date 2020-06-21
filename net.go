@@ -1,6 +1,7 @@
 package flatend
 
 import (
+	"github.com/lithdew/kademlia"
 	"github.com/lithdew/monte"
 	"io"
 	"net"
@@ -30,11 +31,12 @@ func BindTCPv6(addr string) BindFunc {
 var _ io.Writer = (*Context)(nil)
 
 type Context struct {
+	ID      kademlia.ID
 	Headers map[string]string
 	Body    io.ReadCloser
 
-	ID      uint32 // stream id
-	Conn    *monte.Conn
+	nonce   uint32 // stream id
+	conn    *monte.Conn
 	headers map[string]string // response headers
 	written bool              // written before?
 }
@@ -50,14 +52,14 @@ func (c *Context) Write(data []byte) (int, error) {
 
 	if !c.written {
 		packet := ServiceResponsePacket{
-			ID:      c.ID,
+			ID:      c.nonce,
 			Handled: true,
 			Headers: c.headers,
 		}
 
 		c.written = true
 
-		err := c.Conn.Send(packet.AppendTo([]byte{OpcodeServiceResponse}))
+		err := c.conn.Send(packet.AppendTo([]byte{OpcodeServiceResponse}))
 		if err != nil {
 			return 0, err
 		}
@@ -71,11 +73,11 @@ func (c *Context) Write(data []byte) (int, error) {
 		}
 
 		packet := DataPacket{
-			ID:   c.ID,
+			ID:   c.nonce,
 			Data: data[start:end],
 		}
 
-		err := c.Conn.Send(packet.AppendTo([]byte{OpcodeData}))
+		err := c.conn.Send(packet.AppendTo([]byte{OpcodeData}))
 		if err != nil {
 			return 0, err
 		}
@@ -86,16 +88,20 @@ func (c *Context) Write(data []byte) (int, error) {
 
 var contextPool sync.Pool
 
-func acquireContext(headers map[string]string, body io.ReadCloser, id uint32, conn *monte.Conn) *Context {
+func acquireContext(id kademlia.ID, headers map[string]string, body io.ReadCloser, nonce uint32, conn *monte.Conn) *Context {
 	v := contextPool.Get()
 	if v == nil {
 		v = &Context{headers: make(map[string]string)}
 	}
 	ctx := v.(*Context)
+
+	ctx.ID = id
 	ctx.Headers = headers
 	ctx.Body = body
-	ctx.ID = id
-	ctx.Conn = conn
+
+	ctx.nonce = nonce
+	ctx.conn = conn
+
 	return ctx
 }
 

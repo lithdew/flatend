@@ -8,7 +8,7 @@ $ flatend
 2020/06/17 01:07:12 Listening for HTTP requests on '[::]:3000'.
 2020/06/17 01:07:17 <anon> has connected to you. Services: [pipe]
 
-$ DEBUG=* node index.js 
+$ DEBUG=* node index.js
   flatend You are now connected to 127.0.0.1:9000. Services: [] +0ms
   flatend Discovered 0 peer(s). +19ms
 

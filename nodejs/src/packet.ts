@@ -11,16 +11,16 @@ export enum Opcode {
   FindNodeResponse,
 }
 
-export interface Packet {
-  encode(): Buffer;
-}
-
-export class HandshakePacket implements Packet {
-  id: ID | null = null;
+export class HandshakePacket {
+  id?: ID;
   services: string[] = [];
-  signature: Buffer | null = null;
+  signature?: Uint8Array;
 
-  constructor(id: ID | null, services: string[], signature: Buffer | null) {
+  constructor(
+    id: ID | undefined,
+    services: string[],
+    signature: Uint8Array | undefined
+  ) {
     this.id = id;
     this.services = services;
     this.signature = signature;
@@ -57,8 +57,8 @@ export class HandshakePacket implements Packet {
 
     assert(header === 0 || header === 1);
 
-    const result: [ID | null, Buffer] =
-      header === 1 ? ID.decode(buf) : [null, buf];
+    const result: [ID | undefined, Buffer] =
+      header === 1 ? ID.decode(buf) : [undefined, buf];
 
     const id = result[0];
     buf = result[1];
@@ -76,7 +76,7 @@ export class HandshakePacket implements Packet {
       return service.toString("utf8");
     });
 
-    let signature: Buffer | null = null;
+    let signature: Buffer | undefined;
     if (id) {
       signature = buf.slice(0, nacl.sign.signatureLength);
       buf = buf.slice(nacl.sign.signatureLength);
@@ -86,7 +86,7 @@ export class HandshakePacket implements Packet {
   }
 }
 
-export class ServiceRequestPacket implements Packet {
+export class ServiceRequestPacket {
   id: number;
   services: string[] = [];
   headers: { [key: string]: string };
@@ -178,7 +178,7 @@ export class ServiceRequestPacket implements Packet {
   }
 }
 
-export class ServiceResponsePacket implements Packet {
+export class ServiceResponsePacket {
   id: number;
   handled: boolean = false;
   headers: { [key: string]: string };
@@ -252,7 +252,7 @@ export class ServiceResponsePacket implements Packet {
   }
 }
 
-export class DataPacket implements Packet {
+export class DataPacket {
   id: number;
   data: Buffer;
 
@@ -285,7 +285,7 @@ export class DataPacket implements Packet {
   }
 }
 
-export class FindNodeRequest implements Packet {
+export class FindNodeRequest {
   target: Uint8Array;
 
   public constructor(target: Uint8Array) {
@@ -303,7 +303,7 @@ export class FindNodeRequest implements Packet {
   }
 }
 
-export class FindNodeResponse implements Packet {
+export class FindNodeResponse {
   closest: ID[];
 
   public constructor(closest: ID[]) {

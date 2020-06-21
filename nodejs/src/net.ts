@@ -1,24 +1,50 @@
-import { promisify } from "util";
-import dns from "dns";
-import assert from "assert";
-import ipaddr, { IPv4, IPv6 } from "ipaddr.js";
+import { IPv4, IPv6 } from "ipaddr.js";
+import net from "net";
+import events from "events";
+import ipaddr from "ipaddr.js";
 
-export const resolve = async (addr: string): Promise<[IPv4 | IPv6, number]> => {
-  const fields = addr.trim().split(":");
+/**
+ * Returns an available TCP host/port that may be listened to.
+ */
+export async function getAvailableAddress(): Promise<{
+  family: string;
+  host: IPv4 | IPv6;
+  port: number;
+}> {
+  const server = net.createServer();
+  server.unref();
+  server.listen();
 
-  const host = fields.slice(0, fields.length - 1).join(":");
-  const port = fields.pop()!;
+  await events.once(server, "listening");
 
-  let resolvedHost = ipaddr.parse((await promisify(dns.lookup)(host)).address);
-  if (
-    resolvedHost.kind() === "ipv6" &&
-    (<IPv6>resolvedHost).isIPv4MappedAddress()
-  ) {
-    resolvedHost = (<IPv6>resolvedHost).toIPv4Address();
+  const info = (<net.AddressInfo>server.address())!;
+
+  let host = ipaddr.parse(info.address.length === 0 ? "0.0.0.0" : info.address);
+  if (host.kind() === "ipv6" && (<IPv6>host).isIPv4MappedAddress()) {
+    host = (<IPv6>host).toIPv4Address();
   }
 
-  const resolvedPort = parseInt(port);
-  assert(resolvedPort >= 0 && resolvedPort < 65536);
+  server.close();
 
-  return [resolvedHost, resolvedPort];
-};
+  await events.once(server, "close");
+
+  return { family: info.family, host, port: info.port };
+}
+
+export function splitHostPort(
+  addr: string
+): { host: IPv4 | IPv6; port: number } {
+  const fields = addr.split(":").filter((field) => field.length > 0);
+  if (fields.length === 0)
+    throw new Error("Unable to split host:port from address.");
+
+  const port = parseInt(fields.pop()!);
+  if (port < 0 || port > 2 ** 16) throw new Error(`Port ${port} is invalid.`);
+
+  let host = ipaddr.parse(fields.length === 0 ? "0.0.0.0" : fields.join(":"));
+  if (host.kind() === "ipv6" && (<IPv6>host).isIPv4MappedAddress()) {
+    host = (<IPv6>host).toIPv4Address();
+  }
+
+  return { host, port };
+}

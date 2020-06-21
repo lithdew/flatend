@@ -8,9 +8,9 @@ $ flatend
 2020/06/17 01:27:03 Listening for HTTP requests on '[::]:3000'.
 2020/06/17 01:27:10 <anon> has connected to you. Services: [all_todos add_todo remove_todo done_todo]
 
-$ DEBUG=* node index.js 
+$ DEBUG=* node index.js
   flatend You are now connected to 127.0.0.1:9000. Services: [] +0ms
-  flatend Discovered 0 peer(s). +11ms   
+  flatend Discovered 0 peer(s). +11ms
 
 $ http://localhost:3000/
 ```

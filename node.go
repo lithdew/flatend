@@ -401,7 +401,7 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 			}
 
 			go func() {
-				ctx := acquireContext(packet.Headers, stream.Reader, stream.ID, ctx.Conn())
+				ctx := acquireContext(*provider.id, packet.Headers, stream.Reader, stream.ID, ctx.Conn())
 				defer releaseContext(ctx)
 				defer ctx.Body.Close()
 
@@ -409,14 +409,14 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 
 				if !ctx.written {
 					packet := ServiceResponsePacket{
-						ID:      ctx.ID,
+						ID:      ctx.nonce,
 						Handled: true,
 						Headers: ctx.headers,
 					}
 
 					ctx.written = true
 
-					err := ctx.Conn.Send(packet.AppendTo([]byte{OpcodeServiceResponse}))
+					err := ctx.conn.Send(packet.AppendTo([]byte{OpcodeServiceResponse}))
 					if err != nil {
 						provider.CloseStreamWithError(stream, err)
 						return
@@ -425,7 +425,7 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 					return
 				}
 
-				err := ctx.Conn.Send(DataPacket{ID: stream.ID}.AppendTo([]byte{OpcodeData}))
+				err := ctx.conn.Send(DataPacket{ID: stream.ID}.AppendTo([]byte{OpcodeData}))
 				if err != nil {
 					provider.CloseStreamWithError(stream, err)
 					return

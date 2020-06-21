@@ -7,7 +7,6 @@
 [![npm downloads](https://img.shields.io/npm/dm/flatend.svg?style=flat)](https://www.npmjs.com/package/flatend)
 [![Security Responsible Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg)](https://github.com/nodejs/security-wg/blob/master/processes/responsible_disclosure_template.md)
 
-
 <img align="right" width ="200" height="200" src="https://lh3.googleusercontent.com/pw/ACtC-3c6eZvrCLM-wV5UkBn8JZVBf-C-lAJ7XmCLgX5Gz4tCdbhCtREUw_o2bsYIbibU1fCk5A43h_9dBSV7y9hwtv9iIifKVk6QkGEGXYV1E1Kd0jyH62k8zZBsbbT3JSSfGRYW660frbzTO0wtTR4FQECl=s599-no">
 
 **flatend** is an experimental framework and protocol to make microservices more modular, simpler, safer, cheaper, and faster to build using [p2p networking](https://github.com/lithdew/monte).
@@ -16,29 +15,28 @@
 
 ## Features
 
-* Fully agnostic and compatible with any type of language, database, tool, library, or framework.
-* P2P-based service discovery, load balancing, routing, and PKI via [Kademlia](https://en.wikipedia.org/wiki/Kademlia).
-* Fully-encrypted, end-to-end, bidirectional streaming RPC via [Monte](https://github.com/lithdew/monte).
-* Automatic reconnect/retry upon crashes or connection loss.
-* Zero-hassle serverless: every function is a microservice.
-* Stream multiple gigabytes of data across microservices.
+- Fully agnostic and compatible with any type of language, database, tool, library, or framework.
+- P2P-based service discovery, load balancing, routing, and PKI via [Kademlia](https://en.wikipedia.org/wiki/Kademlia).
+- Fully-encrypted, end-to-end, bidirectional streaming RPC via [Monte](https://github.com/lithdew/monte).
+- Automatic reconnect/retry upon crashes or connection loss.
+- Zero-hassle serverless: every function is a microservice.
+- Stream multiple gigabytes of data across microservices.
 
 ## Gateways
 
 **flatend** additionally comes with scalable, high-performance, production-ready, easily-deployable API gateways that are bundled into a [small, single executable binary](https://github.com/lithdew/flatend/releases) to help you quickly deploy your microservices.
 
-* Written in [Go](https://golang.org/).
-* HTTP/1.1, HTTP/2 support.
-* Automatic HTTPS via [LetsEncrypt](https://letsencrypt.org/).
-* Expose/load-balance across microservices.
-* Serve static files and directories.
-* REPL for real-time management (*coming soon!*).
-* Prometheus metrics (*coming soon!*).
-* WebSocket support (*coming soon!*).
-* gRPC support (*coming soon!*).
+- Written in [Go](https://golang.org/).
+- HTTP/1.1, HTTP/2 support.
+- Automatic HTTPS via [LetsEncrypt](https://letsencrypt.org/).
+- Expose/load-balance across microservices.
+- Serve static files and directories.
+- REPL for real-time management (_coming soon!_).
+- Prometheus metrics (_coming soon!_).
+- WebSocket support (_coming soon!_).
+- gRPC support (_coming soon!_).
 
 All gateways have been extensively tested on [Rackspace](https://www.rackspace.com/), [Scaleway](https://www.scaleway.com/en/), [AWS](https://aws.amazon.com/), [Google Cloud](https://cloud.google.com/), and [DigitalOcean](https://www.digitalocean.com/).
-
 
 ## Requirements
 
@@ -50,7 +48,7 @@ Although **flatend** at its core is a protocol, and hence agnostic to whichever 
 The rationale for starting with NodeJS and Go is so that, for any new product/service, you may:
 
 1. Quickly prototype and deploy in NodeJS with SQLite using a 2USD/month bare-metal server.
-2. Once you start scaling up, split up your microservice and rewrite  the performance-critical parts in Go.
+2. Once you start scaling up, split up your microservice and rewrite the performance-critical parts in Go.
 3. Run a red/blue deployment easily to gradually deploy your new microservices and experience zero downtime.
 
 Support is planned for the following runtimes/languages:
@@ -165,7 +163,7 @@ Hello world!
 Try restart your API gateway and watch your service re-discover it.
 
 ```shell
-$ go run main.go 
+$ go run main.go
 2020/06/18 04:11:06 Listening for Flatend nodes on '[::]:39313'.
 2020/06/18 04:11:06 You are now connected to 127.0.0.1:9000. Services: []
 2020/06/18 04:11:06 Re-probed 127.0.0.1:9000. Services: []
@@ -207,34 +205,34 @@ success Saved X new dependencies.
 Write a function that describes how to handle requests for the service `hello_world` in `index.js`.
 
 ```js
-const {Node, Context} = require("flatend");
+const { Node, Context } = require("flatend");
 
-const helloWorld = ctx => ctx.send("Hello world!");
+const helloWorld = (ctx) => ctx.send("Hello world!");
 ```
 
 Register the function as a handler for the service `hello_world`. Start the node and have it connect to Flatend's API gateway.
 
 ```js
-const {Node, Context} = require("flatend");
+const { Node, Context } = require("flatend");
 
-const helloWorld = ctx => ctx.send("Hello world!");
+const helloWorld = (ctx) => ctx.send("Hello world!");
 
 async function main() {
-    await Node.start({
-        addrs: ["127.0.0.1:9000"],
-        services: {
-            'hello_world': helloWorld,
-        },
-    });
+  await Node.start({
+    addrs: ["127.0.0.1:9000"],
+    services: {
+      hello_world: helloWorld,
+    },
+  });
 }
 
-main().catch(err => console.error(err));
+main().catch((err) => console.error(err));
 ```
 
 Run it.
 
 ```shell
-$ DEBUG=* node index.js 
+$ DEBUG=* node index.js
   flatend You are now connected to 127.0.0.1:9000. Services: [] +0ms
   flatend Discovered 0 peer(s). +19ms
 ```
@@ -249,7 +247,7 @@ Hello world!
 Try restart your API gateway and watch your service re-discover it.
 
 ```shell
-$ DEBUG=* node index.js 
+$ DEBUG=* node index.js
   flatend You are now connected to 127.0.0.1:9000. Services: [] +0ms
   flatend Discovered 0 peer(s). +19ms
   flatend Trying to reconnect to 127.0.0.1:9000. Sleeping for 500ms. +41s
@@ -308,9 +306,9 @@ import "io/ioutil"
 
 func helloWorld(ctx *flatend.Context) {
     // All headers must be written before writing any response body data.
-    
+
     // Headers are used to send small amounts of metadata to a requester.
-    
+
     // For example, the HTTP API gateway directly sets headers provided
     // as a response as the headers of a HTTP response to a HTTP request
     // which has been transcribed to a Flatend service request that is
@@ -330,7 +328,7 @@ func helloWorld(ctx *flatend.Context) {
 
     // The body of a request may be accessed via `ctx.Body`. Request bodies
     // are unbounded in size, and represented as a `io.ReadCloser`.
-    
+
     // It is advised to wrap the body under an `io.LimitReader` to limit
     // the size of the bodies of requests.
 
@@ -352,7 +350,7 @@ interface NodeOpts {
     // The format of the address must be [host]:[port].
     addr?: string;
 
-    // A list of addresses to nodes to initially reach out 
+    // A list of addresses to nodes to initially reach out
     // for/bootstrap from first.
     addrs?: string;
 
@@ -381,7 +379,7 @@ const helloWorld = async ctx => {
     ctx.pipe(ctx); // This would pipe all request data as response data.
 
     // Headers are used to send small amounts of metadata to a requester.
-    
+
     // For example, the HTTP API gateway directly sets headers provided
     // as a response as the headers of a HTTP response to a HTTP request
     // which has been transcribed to a Flatend service request that is
@@ -528,12 +526,12 @@ Got a question? Either:
 
 #### Is flatend production-ready? Who uses flatend today?
 
-*flatend is still a heavy work-in-progress*. That being said, it is being field tested with a few enterprise projects related to energy and IoT right now.
+_flatend is still a heavy work-in-progress_. That being said, it is being field tested with a few enterprise projects related to energy and IoT right now.
 
 Deployments of flatend have also been made with a few hundred thousand visitors.
 
 #### Will I be able to run flatend myself?
-   
+
 It was built from the start to allow for self-hosting on the cloud, on bare-metal servers, in Docker containers, on Kubernetes, etc. The cloud is your limit (see the pun I did there?).
 
 #### I'm worried about vendor lock-in - what happens if flatend goes out of business?

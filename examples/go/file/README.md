@@ -8,7 +8,7 @@ $ flatend
 2020/06/17 02:36:30 Listening for HTTP requests on '[::]:3000'.
 2020/06/17 02:36:41 <anon> has connected to you. Services: [file]
 
-$ node index.js 
+$ node index.js
 Successfully dialed 127.0.0.1:9000. Services: []
 
 $ http://localhost:3000/
@@ -36,14 +36,14 @@ service = "file"
 ```
 
 ```js
-const {Node} = require("flatend");
+const { Node } = require("flatend");
 const fs = require("fs");
 
 const main = async () => {
-    const node = new Node();
-    node.register('file', ctx => fs.createReadStream("index.js").pipe(ctx));
-    await node.dial("127.0.0.1:9000");
-}
+  const node = new Node();
+  node.register("file", (ctx) => fs.createReadStream("index.js").pipe(ctx));
+  await node.dial("127.0.0.1:9000");
+};
 
-main().catch(err => console.error(err));
+main().catch((err) => console.error(err));
 ```

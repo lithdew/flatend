@@ -1,33 +1,19 @@
-import { Context } from "../context";
-import { Memory } from "./memory";
-
 export class SessionStore {
-  store: Memory;
-  mode: string;
+  store: any;
 
-  constructor(mode: string) {
-    this.mode = mode
-    switch(mode) { 
-      case "memory": {
-        this.store = new Memory();
-        break; 
-      }
-      default: {
-        this.store = new Memory();
-        break; 
-      } 
-    }
+  constructor(store: any) {
+    this.store = store
   }
 
-  public load(sessionid: string) {
-    return sessionid? Object.assign(this.store.get(sessionid), {id: sessionid}) : null
+  public load(headers: { [key:string]:string }) {
+    return this.store.get(headers.sessionId)
   }
 
-  public create(sessionid: string, session: any) {
-    this.store.set(sessionid, session)
+  public create(sessionId: string, session: any) {
+    this.store.set(sessionId, session)
   }
 
-  public clear(sessionid: string) {
-    this.store.destroy(sessionid)
+  public clear(sessionId: string) {
+    this.store.destroy(sessionId)
   }
 }

@@ -1,8 +1,9 @@
 import { Node } from "./node"
 import { SessionStore } from "./session-store"
+import { Memory } from "./session-store/memory"
 import { randomBytes } from "tweetnacl";
 
-const session = new SessionStore("memory");
+const session = new SessionStore(new Memory());
 
 const users = [
   {
@@ -29,7 +30,7 @@ const main = async () => {
           if (authenticated) {
             const sid = Buffer.from(randomBytes(32)).toString('hex');
             session.create(sid, authenticated);
-            ctx.json(session.load(sid));
+            ctx.json(session.store.get(sid));
           }
           else {
             ctx.json({
@@ -53,7 +54,7 @@ const main = async () => {
         }
       },
       logout: (ctx) => {
-        const sess = session.load(ctx.headers["params.sid"])
+        const sess = session.load(ctx.headers)
         session.clear(sess.id)
       }
     },

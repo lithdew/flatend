@@ -2,13 +2,13 @@ import { Context } from "../context";
 import { Store } from "./store";
 
 export class MemorySessionStore {
-  store?: any;
+  store?: Store;
 
   constructor() {
     this.store = new Store();
   }
 
-  public load(sessionid: string): any {
+  public load(sessionid: string) {
     return sessionid? Object.assign(this.store.get(sessionid), {id: sessionid}) : null
   }
 

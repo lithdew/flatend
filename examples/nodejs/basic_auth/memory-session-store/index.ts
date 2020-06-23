@@ -2,7 +2,6 @@ import { Context } from "../context";
 import { Store } from "./store";
 
 export class MemorySessionStore {
-  sessionid?: string | null;
   store?: any;
 
   constructor() {
@@ -10,7 +9,7 @@ export class MemorySessionStore {
   }
 
   public load(sessionid: string): any {
-    return this.sessionid? Object.assign(this.store.get(sessionid), {id: sessionid}) : null
+    return sessionid? Object.assign(this.store.get(sessionid), {id: sessionid}) : null
   }
 
   public create(sessionid: string, session: any) {

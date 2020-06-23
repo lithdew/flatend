@@ -1,7 +1,7 @@
 import { Context } from "../context";
 import { Store } from "./store";
 
-export class AppSession {
+export class MemorySessionStore {
   sessionid?: string | null;
   store?: any;
 

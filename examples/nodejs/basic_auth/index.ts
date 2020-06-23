@@ -1,5 +1,5 @@
 import { Node } from "./node"
-import { AppSession } from "./app-session"
+import { AppSession } from "./memory-session-store"
 import { randomBytes } from "tweetnacl";
 
 const session = new AppSession();

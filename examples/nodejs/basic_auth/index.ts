@@ -15,8 +15,7 @@ const users = [
 ]
 
 const authenticate = (id: string, password: string) => {
-  var idx = users.findIndex(u => u.id === id)
-  return idx !== -1? users[idx] : -1
+  return users.find(u => u.id === id)
 }
 
 const main = async () => {
@@ -26,7 +25,7 @@ const main = async () => {
       login: (ctx) => {
         if (ctx.headers["params.id"] && ctx.headers["params.password"]) {
           const authenticated = authenticate(ctx.headers["params.id"], ctx.headers["params.password"]);
-          if (authenticated !== -1) {
+          if (authenticated) {
             const sid = Buffer.from(randomBytes(32)).toString('hex');
             session.create(sid, authenticated);
             ctx.json(session.load(sid));

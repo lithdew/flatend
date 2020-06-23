@@ -139,18 +139,25 @@ export class Table {
         if (Buffer.compare(bucket[i].publicKey, pub) != 0)
           closest.push(bucket[i]);
       }
-      return closest.length < k;
     };
 
     const m = this.bucketIndex(pub);
-    let l = m - 1;
-    let r = m + 1;
 
     fill(m);
-    while ((l >= 0 && fill(l)) || (r < this.buckets.length && fill(r))) {
-      [l, r] = [l - 1, r + 1];
+
+    for (
+      let i = 1;
+      closest.length < k && (m - i >= 0 || m + i < this.buckets.length);
+      i++
+    ) {
+      if (m - i >= 0) fill(m - i);
+      if (m + i < this.buckets.length) fill(m + i);
     }
 
-    return closest;
+    closest.sort((a: ID, b: ID) =>
+      Buffer.compare(xor(a.publicKey, pub), xor(b.publicKey, pub))
+    );
+
+    return closest.length > k ? closest.slice(0, k) : closest;
   }
 }

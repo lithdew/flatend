@@ -10,8 +10,8 @@ require (
 	github.com/jpillora/backoff v1.0.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lithdew/bytesutil v0.0.0-20200409052507-d98389230a59
-	github.com/lithdew/kademlia v0.0.0-20200617103555-3b0f902b24c0
-	github.com/lithdew/monte v0.0.0-20200613174427-105bad77ff52
+	github.com/lithdew/kademlia v0.0.0-20200622165832-45f8d02aa528
+	github.com/lithdew/monte v0.0.0-20200622090619-273283c7e8b7
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.0

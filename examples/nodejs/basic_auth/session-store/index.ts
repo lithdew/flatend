@@ -1,11 +1,22 @@
 import { Context } from "../context";
-import { Store } from "./store";
+import { Memory } from "./memory";
 
-export class MemorySessionStore {
-  store?: Store;
+export class SessionStore {
+  store: Memory;
+  mode: string;
 
-  constructor() {
-    this.store = new Store();
+  constructor(mode: string) {
+    this.mode = mode
+    switch(mode) { 
+      case "memory": {
+        this.store = new Memory();
+        break; 
+      }
+      default: {
+        this.store = new Memory();
+        break; 
+      } 
+    }
   }
 
   public load(sessionid: string) {
@@ -13,12 +24,10 @@ export class MemorySessionStore {
   }
 
   public create(sessionid: string, session: any) {
-    this.sessionid = sessionid
     this.store.set(sessionid, session)
   }
 
   public clear(sessionid: string) {
-    this.sessionid = null
     this.store.destroy(sessionid)
   }
 }

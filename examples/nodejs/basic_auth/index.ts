@@ -1,8 +1,9 @@
 import { Node } from "./node"
-import { MemorySessionStore } from "./memory-session-store"
+import { SessionStore } from "./session-store"
 import { randomBytes } from "tweetnacl";
 
-const session = new MemorySessionStore();
+const session = new SessionStore("memory");
+
 const users = [
   {
     id: "john",

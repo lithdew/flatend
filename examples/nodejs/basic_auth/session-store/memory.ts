@@ -1,4 +1,4 @@
-export class Store {
+export class Memory {
   sessions: { [key: string]: any }
 
   constructor(

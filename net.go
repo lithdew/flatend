@@ -4,29 +4,10 @@ import (
 	"github.com/lithdew/kademlia"
 	"github.com/lithdew/monte"
 	"io"
-	"net"
 	"sync"
 )
 
 const ChunkSize = 2048
-
-type BindFunc func() (net.Listener, error)
-
-func BindAny() BindFunc {
-	return func() (net.Listener, error) { return net.Listen("tcp", ":0") }
-}
-
-func BindTCP(addr string) BindFunc {
-	return func() (net.Listener, error) { return net.Listen("tcp", addr) }
-}
-
-func BindTCPv4(addr string) BindFunc {
-	return func() (net.Listener, error) { return net.Listen("tcp4", addr) }
-}
-
-func BindTCPv6(addr string) BindFunc {
-	return func() (net.Listener, error) { return net.Listen("tcp6", addr) }
-}
 
 var _ io.Writer = (*Context)(nil)
 

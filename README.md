@@ -285,13 +285,9 @@ type Node struct {
     // by calling `flatend.GenerateSecretKey()`.
     SecretKey kademlia.PrivateKey
 
-    // A list of addresses and ports assembled using:
-    // 1. flatend.BindAny() (bind to all hosts and any available port)
-    // 2. flatend.BindTCP(string) (binds to a [host]:[port])
-    // 3. flatend.BindTCPv4(string) (binds to an [IPv4 host]:[port])
-    // 4. flatend.BindTCPv6(string) (binds to an [IPv6 host]:[port])
-    // which your Flatend node will listen for other nodes from.
-    BindAddrs []BindFunc
+	// A list of IPv4/IPv6 addresses and ports assembled as [host]:[port] which
+	// your Flatend node will listen for other nodes from.
+    BindAddrs []string
 
     // A mapping of service names to their respective handlers.
     Services map[string]Handler

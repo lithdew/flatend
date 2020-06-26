@@ -28,13 +28,9 @@ type Node struct {
 	// by calling `flatend.GenerateSecretKey()`.
 	SecretKey kademlia.PrivateKey
 
-	// A list of addresses and ports assembled using:
-	// 1. flatend.BindAny() (bind to all hosts and any available port)
-	// 2. flatend.BindTCP(string) (binds to a [host]:[port])
-	// 3. flatend.BindTCPv4(string) (binds to an [IPv4 host]:[port])
-	// 4. flatend.BindTCPv6(string) (binds to an [IPv6 host]:[port])
-	// which your Flatend node will listen for other nodes from.
-	BindAddrs []BindFunc
+	// A list of IPv4/IPv6 addresses and ports assembled as [host]:[port] which
+	// your Flatend node will listen for other nodes from.
+	BindAddrs []string
 
 	// A mapping of service names to their respective handlers.
 	Services map[string]Handler
@@ -67,8 +63,8 @@ func GenerateSecretKey() kademlia.PrivateKey {
 
 func (n *Node) Start(addrs ...string) error {
 	var (
-		bindHost net.IP
-		bindPort uint16
+		publicHost net.IP
+		publicPort uint16
 	)
 
 	if n.SecretKey != kademlia.ZeroPrivateKey {
@@ -78,28 +74,29 @@ func (n *Node) Start(addrs ...string) error {
 				return err
 			}
 
-			bindHost = addr.IP
-			if bindHost == nil {
-				return fmt.Errorf("'%s' is an invalid host: it must be an IPv4 or IPv6 address", addr.IP)
-			}
+			publicHost = addr.IP
 
 			if addr.Port <= 0 || addr.Port >= math.MaxUint16 {
 				return fmt.Errorf("'%d' is an invalid port", addr.Port)
 			}
 
-			bindPort = uint16(addr.Port)
+			publicPort = uint16(addr.Port)
 		} else { // get a random public address
 			ln, err := net.Listen("tcp", ":0")
 			if err != nil {
 				return fmt.Errorf("unable to listen on any port: %w", err)
 			}
 			bindAddr := ln.Addr().(*net.TCPAddr)
-			bindHost = bindAddr.IP
-			bindPort = uint16(bindAddr.Port)
+			publicHost = bindAddr.IP
+			publicPort = uint16(bindAddr.Port)
 			if err := ln.Close(); err != nil {
-				return fmt.Errorf("failed to close listener for getting avaialble port: %w", err)
+				return fmt.Errorf("failed to close listener for getting available port: %w", err)
 			}
 		}
+	}
+
+	if publicHost == nil {
+		publicHost = net.ParseIP("0.0.0.0")
 	}
 
 	start := false
@@ -111,8 +108,8 @@ func (n *Node) Start(addrs ...string) error {
 	if n.SecretKey != kademlia.ZeroPrivateKey {
 		n.id = &kademlia.ID{
 			Pub:  n.SecretKey.Public(),
-			Host: bindHost,
-			Port: bindPort,
+			Host: publicHost,
+			Port: publicPort,
 		}
 
 		n.table = kademlia.NewTable(n.id.Pub)
@@ -129,7 +126,7 @@ func (n *Node) Start(addrs ...string) error {
 	}
 
 	if n.id != nil && len(n.BindAddrs) == 0 {
-		ln, err := BindTCP(Addr(n.id.Host, n.id.Port))()
+		ln, err := net.Listen("tcp", Addr(n.id.Host, n.id.Port))
 		if err != nil {
 			return err
 		}
@@ -145,8 +142,8 @@ func (n *Node) Start(addrs ...string) error {
 		n.lns = append(n.lns, ln)
 	}
 
-	for _, fn := range n.BindAddrs {
-		ln, err := fn()
+	for _, addr := range n.BindAddrs {
+		ln, err := net.Listen("tcp", addr)
 		if err != nil {
 			for _, ln := range n.lns {
 				ln.Close()
@@ -273,6 +270,20 @@ func (n *Node) Shutdown() {
 		ln.Close()
 	}
 	n.wg.Wait()
+}
+
+func (n *Node) ProvidersFor(services ...string) []*Provider {
+	set := make(map[kademlia.PublicKey]*Provider)
+	for _, provider := range n.providers.getProviders(services...) {
+		set[provider.id.Pub] = provider
+	}
+
+	providers := make([]*Provider, 0, len(set))
+	for _, provider := range set {
+		providers = append(providers, provider)
+	}
+
+	return providers
 }
 
 func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
@@ -503,7 +514,7 @@ func (n *Node) HandleMessage(ctx *monte.Context) error {
 			provider.CloseStreamWithError(stream, io.EOF)
 		} else {
 			_, err = stream.Writer.Write(packet.Data)
-			if err != nil && !errors.Is(err, io.ErrClosedPipe) {
+			if err != nil {
 				err = fmt.Errorf("failed to write payload: %w", err)
 				provider.CloseStreamWithError(stream, err)
 				return err
@@ -588,6 +599,10 @@ func (n *Node) Probe(addr string) error {
 	resolved, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return err
+	}
+
+	if resolved.IP == nil {
+		resolved.IP = net.ParseIP("0.0.0.0")
 	}
 
 	conn, err := n.getClient(resolved.String()).Get()

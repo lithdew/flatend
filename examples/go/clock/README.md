@@ -83,7 +83,7 @@ func clock(ctx *flatend.Context) {
 	ours := latest.Format(time.Stamp)
 
 	timestamp, err := ioutil.ReadAll(ctx.Body)
-	if err != nil && !errors.Is(err, io.ErrClosedPipe) {
+	if err != nil {
 		return
 	}
 
@@ -136,9 +136,7 @@ func main() {
 				fmt.Printf("[%d] Asked someone for their current time. Ours is '%s'.\n", i, timestamp)
 
 				res, err := ioutil.ReadAll(stream.Reader)
-				if !errors.Is(err, io.ErrClosedPipe) {
-					check(err)
-				}
+				check(err)
 
 				fmt.Printf("[%d] Got a response! Their current time is: '%s'\n", i, string(res))
 			}

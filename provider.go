@@ -12,8 +12,8 @@ import (
 type Stream struct {
 	ID     uint32
 	Header *ServiceResponsePacket
-	Reader *io.PipeReader
-	Writer *io.PipeWriter
+	Reader *pipeReader
+	Writer *pipeWriter
 
 	received uint64
 	wg       sync.WaitGroup
@@ -31,7 +31,7 @@ type Provider struct {
 }
 
 func (p *Provider) NextStream() *Stream {
-	reader, writer := io.Pipe()
+	reader, writer := createWrappedPipe()
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -58,7 +58,7 @@ func (p *Provider) GetStream(id uint32) (*Stream, bool) {
 }
 
 func (p *Provider) RegisterStream(header ServiceRequestPacket) (*Stream, bool) {
-	reader, writer := io.Pipe()
+	reader, writer := createWrappedPipe()
 
 	p.lock.Lock()
 	defer p.lock.Unlock()

@@ -194,7 +194,19 @@ export class Node {
    *
    * @param services List of services.
    */
-  providers(services: string[]): Provider[] {
+  providersFor(services: string[]): Provider[] {
+    const map = this._providers(services).reduce(
+      (map: Map<string, Provider>, provider: Provider) =>
+        provider.id?.publicKey
+          ? map.set(hash(provider.id.publicKey), provider)
+          : map,
+      new Map<string, Provider>()
+    );
+
+    return [...map.values()];
+  }
+
+  _providers(services: string[]): Provider[] {
     const providers: Provider[] = [];
     for (const service of services) {
       const entries = this.services.get(service);
@@ -219,7 +231,7 @@ export class Node {
   ) {
     if (this._shutdown) throw new Error("Node is shut down.");
 
-    const providers = this.providers(services);
+    const providers = this._providers(services);
 
     for (const provider of providers) {
       return await provider.push(services, headers, body);

@@ -6,11 +6,22 @@ export class SessionStore {
   }
 
   public load(headers: { [key:string]:string }) {
-    return this.store.get(headers.sessionId)
+    if(!headers.sessionId) {
+      return null
+    } else { 
+      return this.store.get(headers.sessionId)
+    }
   }
 
-  public create(sessionId: string, session: any) {
-    this.store.set(sessionId, session)
+  public create(sessionId: string, payload: any) {
+    var maxAge = 86400;
+    var oneDay = 86400;
+    var now = new Date().getTime();
+    var expiry = maxAge ? now + maxAge : now + oneDay;
+    this.store.set(sessionId, Object.assign({
+      sid: sessionId,
+      expiry: expiry
+    }, payload))
   }
 
   public clear(sessionId: string) {

@@ -2,7 +2,9 @@ import { Node } from "./node"
 import { SessionStore } from "./session-store"
 import { Memory } from "./session-store/memory"
 import { randomBytes } from "tweetnacl";
+import bcrypt from "bcryptjs";
 
+const salt = bcrypt.genSaltSync(10);
 const session = new SessionStore(new Memory());
 
 const users = [
@@ -27,7 +29,7 @@ const main = async () => {
       login: (ctx) => {
         if (ctx.headers["params.id"] && ctx.headers["params.password"]) {
           const authenticated = authenticate(ctx.headers["params.id"], ctx.headers["params.password"]);
-          if (authenticated) {
+          if (authenticated && bcrypt.compareSync(ctx.headers["params.password"], authenticated.password)) {
             const sid = Buffer.from(randomBytes(32)).toString('hex');
             session.create(sid, authenticated);
             ctx.json(session.store.get(sid));
@@ -48,7 +50,7 @@ const main = async () => {
         if (ctx.headers["params.id"] && ctx.headers["params.password"]) {
           users.push({
             id: ctx.headers["params.id"],
-            password: ctx.headers["params.password"]
+            password: bcrypt.hashSync(ctx.headers["params.password"], salt)
           })
           ctx.send('done');
         }

@@ -7,16 +7,7 @@ import bcrypt from "bcryptjs";
 const salt = bcrypt.genSaltSync(10);
 const session = new SessionStore(new Memory());
 
-const users = [
-  {
-    id: "john",
-    password: "123"
-  },
-  {
-    id: "mary",
-    password: "456"
-  }
-]
+const users = []
 
 const authenticate = (id: string, password: string) => {
   return users.find(u => u.id === id)

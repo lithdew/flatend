@@ -1,6 +1,7 @@
-import nacl from "tweetnacl";
-import assert from "assert";
-import { ID } from "./kademlia";
+import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
+import assert from "https://deno.land/std/testing/asserts.ts";
+import { ID } from "./kademlia.ts";
 
 export enum Opcode {
   Handshake,

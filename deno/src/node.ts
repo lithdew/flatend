@@ -1,9 +1,10 @@
-import { Context, Handler } from "./context";
-import net from "net";
-import { ID, Table } from "./kademlia";
-import nacl from "tweetnacl";
-import { getAvailableAddress, splitHostPort } from "./net";
-import { IPv4, IPv6 } from "ipaddr.js";
+import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import { Context, Handler } from "./context.ts";
+// import net from "net";
+import { ID, Table } from "./kademlia.ts";
+import * as nacl from 'https://deno.land/x/tweetnacl_deno/src/nacl.ts'
+import { getAvailableAddress, splitHostPort } from "./net.ts";
+import ipaddr from "https://jspm.dev/ipaddr.js";
 import {
   DataPacket,
   FindNodeRequest,
@@ -12,11 +13,11 @@ import {
   Opcode,
   ServiceRequestPacket,
   ServiceResponsePacket,
-} from "./packet";
-import events from "events";
-import { clientHandshake, serverHandshake, Session } from "./session";
-import hash from "object-hash";
-import { Provider } from "./provider";
+} from "./packet.ts";
+import events from "https://deno.land/std/node/events.ts";
+import { clientHandshake, serverHandshake, Session } from "./session.ts";
+import { Provider } from "./provider.ts";
+import hash from "https://jspm.dev/object-hash";
 
 const debug = require("debug")("flatend");
 
@@ -74,7 +75,7 @@ export class Node {
         }
       }
 
-      let publicHost: IPv4 | IPv6;
+      let publicHost: ipaddr.IPv4 | ipaddr.IPv6;
       let publicPort: number;
 
       if (opts.publicAddr) {

@@ -1,7 +1,7 @@
-import { IPv4, IPv6 } from "ipaddr.js";
-import net from "net";
-import events from "events";
-import ipaddr from "ipaddr.js";
+import { IPv4, IPv6 } from "https://jspm.dev/ipaddr.js";
+import net from "./std-node-net.ts";
+import events from "https://deno.land/std/node/events.ts";
+import ipaddr from "https://jspm.dev/ipaddr.js";
 
 /**
  * Returns an available TCP host/port that may be listened to.

@@ -1,12 +1,13 @@
-import net from "net";
-import nacl from "tweetnacl";
-import events from "events";
-import crypto from "crypto";
+import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import * as net from "./std-node-net.ts";
+import nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
+import events from "https://deno.land/std/node/events.ts";
+import crypto from "./std-node-crypto.ts";
 
-const blake2b = require("blake2b");
+import { blake2b } from "https://deno.land/x/blake2b/mod.ts";
 
 export function x25519(privateKey: Uint8Array, publicKey: Uint8Array): Buffer {
-  return blake2b(32).update(nacl.scalarMult(privateKey, publicKey)).digest();
+  return blake2b(nacl.scalarMult(privateKey, publicKey), "", "", 32);
 }
 
 export async function serverHandshake(conn: net.Socket): Promise<Uint8Array> {

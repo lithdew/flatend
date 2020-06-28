@@ -1,6 +1,7 @@
-import nacl from "tweetnacl";
-import ipaddr, { IPv4, IPv6 } from "ipaddr.js";
-import assert from "assert";
+import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
+import ipaddr, { IPv4, IPv6 } from "https://jspm.dev/ipaddr.js";
+import assert from "https://deno.land/std/testing/asserts.ts";
 
 export enum UpdateResult {
   New,

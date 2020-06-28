@@ -1,6 +1,7 @@
-import { ID } from "./kademlia";
-import net from "net";
-import { Session } from "./session";
+import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import { ID } from "./kademlia.ts";
+import net from "./std-node-net.ts";
+import { Session } from "./session.ts";
 import {
   drain,
   lengthPrefixed,
@@ -8,8 +9,8 @@ import {
   RPC,
   Stream,
   Streams,
-} from "./stream";
-import { Opcode } from "./packet";
+} from "./stream.ts";
+import { Opcode } from "./packet.ts";
 
 export class Provider {
   id?: ID;

@@ -1,6 +1,7 @@
-import { Readable, Writable } from "stream";
-import events, { EventEmitter } from "events";
-import { DataPacket, ServiceRequestPacket } from "./packet";
+import { Buffer } from 'https://deno.land/std/node/buffer.ts'
+import { Readable, Writable } from "https://jspm.dev/stream";
+import events, { EventEmitter } from "https://deno.land/std/node/events.ts";
+import { DataPacket, ServiceRequestPacket } from "./packet.ts";
 
 export async function drain(writable: Writable) {
   if (writable.destroyed) throw new Error(`premature close`);

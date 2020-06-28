@@ -1,10 +1,11 @@
-import { Duplex, finished } from "stream";
-import { Stream, STREAM_CHUNK_SIZE } from "./stream";
-import { ID } from "./kademlia";
-import util from "util";
-import { DataPacket, Opcode, ServiceResponsePacket } from "./packet";
-import { Provider } from "./provider";
-import { chunkBuffer } from "./node";
+import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import { Duplex, finished } from "https://jspm.dev/stream";
+import { Stream, STREAM_CHUNK_SIZE } from "./stream.ts";
+import { ID } from "./kademlia.ts";
+import * as util from 'https://deno.land/std/node/util.ts'
+import { DataPacket, Opcode, ServiceResponsePacket } from "./packet.ts";
+import { Provider } from "./provider.ts";
+import { chunkBuffer } from "./node.ts";
 
 export type Handler = (ctx: Context) => void;
 

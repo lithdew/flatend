@@ -256,7 +256,7 @@ export class Node {
     const server = net.createServer(async (conn) => {
       this.conns.add(conn);
 
-      setImmediate(async () => {
+      setTimeout(async () => {
         await events.once(conn, "close");
         this.conns.delete(conn);
       });
@@ -266,7 +266,7 @@ export class Node {
         const session = new Session(secret);
 
         const provider = new Provider(conn, session, false);
-        setImmediate(() => this.read(provider));
+        setTimeout(() => this.read(provider));
       } catch (err) {
         debug("Error from incoming node:", err);
         conn.end();
@@ -279,7 +279,7 @@ export class Node {
 
     this.servers.add(server);
 
-    setImmediate(async () => {
+    setTimeout(async () => {
       await events.once(server, "close");
       this.servers.delete(server);
     });
@@ -305,7 +305,7 @@ export class Node {
 
       this.conns.add(conn);
 
-      setImmediate(async () => {
+      setTimeout(async () => {
         await events.once(conn, "close");
         this.clients.delete(hash(opts));
         this.conns.delete(conn);
@@ -318,7 +318,7 @@ export class Node {
         provider = new Provider(conn, session, true);
         this.clients.set(hash(opts), provider);
 
-        setImmediate(() => this.read(provider!));
+        setTimeout(() => this.read(provider!));
 
         const handshake = new HandshakePacket(
           this.id,
@@ -369,7 +369,7 @@ export class Node {
           providers.add(provider);
         }
 
-        setImmediate(async () => {
+        setTimeout(async () => {
           await events.once(provider!.sock, "end");
 
           debug(
@@ -393,7 +393,7 @@ export class Node {
           }
         });
 
-        setImmediate(async () => {
+        setTimeout(async () => {
           await events.once(provider!.sock, "end");
 
           if (this._shutdown) return;
@@ -493,7 +493,7 @@ export class Node {
           providers.add(provider);
         }
 
-        setImmediate(async () => {
+        setTimeout(async () => {
           await events.once(provider.sock, "end");
 
           debug(
@@ -555,7 +555,7 @@ export class Node {
           const ctx = new Context(provider, stream, packet.headers);
           const handler = this.handlers[service];
 
-          setImmediate(async () => {
+          setTimeout(async () => {
             try {
               await handler(ctx);
             } catch (err) {

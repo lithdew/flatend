@@ -34,7 +34,7 @@ export class Context extends Duplex {
 
     // pipe stream body to context
 
-    setImmediate(async () => {
+    setTimeout(async () => {
       for await (const frame of this._stream.body) {
         this.push(frame);
       }
@@ -43,7 +43,7 @@ export class Context extends Duplex {
 
     // write stream eof when stream writable is closed
 
-    setImmediate(async () => {
+    setTimeout(async () => {
       await util.promisify(finished)(this, { readable: false });
 
       await this._writeHeader();

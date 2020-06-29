@@ -61,7 +61,7 @@ export class Node {
     if (opts.services) node.handlers = opts.services;
 
     if (opts.secretKey) {
-      node.keys = nacl.sign.keyPair.fromSecretKey(opts.secretKey);
+      node.keys = nacl.sign_keyPair_fromSecretKey(opts.secretKey);
 
       debug(`Public Key: ${Buffer.from(node.keys.publicKey).toString("hex")}`);
 
@@ -117,7 +117,7 @@ export class Node {
   }
 
   async bootstrap() {
-    const pub = this.id?.publicKey ?? Buffer.alloc(nacl.sign.publicKeyLength);
+    const pub = this.id?.publicKey ?? Buffer.alloc(nacl.SignLength.PublicKey);
     const visited = new Set<string>();
 
     let queue: ID[] = this.table.closestTo(pub, this.table.cap);
@@ -326,7 +326,7 @@ export class Node {
           undefined
         );
         if (this.keys)
-          handshake.signature = nacl.sign.detached(
+          handshake.signature = nacl.sign_detached(
             handshake.payload,
             this.keys.secretKey
           );
@@ -340,7 +340,7 @@ export class Node {
 
         if (packet.id && packet.signature) {
           if (
-            !nacl.sign.detached.verify(
+            !nacl.sign_detached_verify(
               packet.payload,
               packet.signature,
               packet.id.publicKey
@@ -464,7 +464,7 @@ export class Node {
         const packet = HandshakePacket.decode(frame)[0];
         if (packet.id && packet.signature) {
           if (
-            !nacl.sign.detached.verify(
+            !nacl.sign_detached_verify(
               packet.payload,
               packet.signature,
               packet.id.publicKey
@@ -523,7 +523,7 @@ export class Node {
           undefined
         );
         if (this.keys)
-          response.signature = nacl.sign.detached(
+          response.signature = nacl.sign_detached(
             response.payload,
             this.keys.secretKey
           );
@@ -605,7 +605,7 @@ export class Node {
  * Generates an Ed25519 secret key for a node.
  */
 export function generateSecretKey(): Buffer {
-  return Buffer.from(nacl.sign.keyPair().secretKey);
+  return Buffer.from(nacl.sign_keyPair().secretKey);
 }
 
 export function* chunkBuffer(buf: Buffer, size: number) {

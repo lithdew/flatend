@@ -1,5 +1,5 @@
 import { Buffer } from "https://deno.land/std/node/buffer.ts";
-import nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
+import * as nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
 import ipaddr, { IPv4, IPv6 } from "https://jspm.dev/ipaddr.js";
 import assert from "https://deno.land/std/testing/asserts.ts";
 
@@ -55,8 +55,8 @@ export class ID {
   }
 
   public static decode(buf: Buffer): [ID, Buffer] {
-    const publicKey = Uint8Array.from(buf.slice(0, nacl.sign.publicKeyLength));
-    buf = buf.slice(nacl.sign.publicKeyLength);
+    const publicKey = Uint8Array.from(buf.slice(0, nacl.SignLength.PublicKey));
+    buf = buf.slice(nacl.SignLength.PublicKey);
 
     const hostHeader = buf.readUInt8();
     buf = buf.slice(1);
@@ -76,7 +76,7 @@ export class ID {
 
 export class Table {
   buckets: Array<Array<ID>> = [
-    ...Array(nacl.sign.publicKeyLength * 8),
+    ...Array(nacl.SignLength.PublicKey * 8),
   ].map(() => []);
 
   pub: Uint8Array;
@@ -84,7 +84,7 @@ export class Table {
   length: number = 0;
 
   public constructor(
-    pub: Uint8Array = Buffer.alloc(nacl.sign.publicKeyLength)
+    pub: Uint8Array = Buffer.alloc(nacl.SignLength.PublicKey)
   ) {
     this.pub = pub;
   }

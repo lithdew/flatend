@@ -298,8 +298,8 @@ export class FindNodeRequest {
   }
 
   public static decode(buf: Buffer): [FindNodeRequest, Buffer] {
-    const target = buf.slice(0, nacl.sign.publicKeyLength);
-    buf = buf.slice(nacl.sign.publicKeyLength);
+    const target = buf.slice(0, nacl.SignLength.PublicKey);
+    buf = buf.slice(nacl.SignLength.PublicKey);
     return [new FindNodeRequest(target), buf];
   }
 }

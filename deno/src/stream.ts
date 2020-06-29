@@ -1,6 +1,6 @@
 import { Buffer } from 'https://deno.land/std/node/buffer.ts'
-import { Readable, Writable } from "https://jspm.dev/stream";
-import events, { EventEmitter } from "https://deno.land/std/node/events.ts";
+import { Readable, Writable } from "./std-node-stream.ts"
+import * as events from "https://deno.land/std/node/events.ts";
 import { DataPacket, ServiceRequestPacket } from "./packet.ts";
 
 export async function drain(writable: Writable) {
@@ -15,6 +15,7 @@ export async function drain(writable: Writable) {
 }
 
 export async function* lengthPrefixed(stream: AsyncIterable<Buffer>) {
+  // @ts-ignore
   let buf: Buffer = Buffer.of();
   let size: number | undefined;
 
@@ -40,6 +41,7 @@ export async function* lengthPrefixed(stream: AsyncIterable<Buffer>) {
 }
 
 export function prefixLength(src: string | ArrayBufferLike): Buffer {
+  // @ts-ignore
   const data = Buffer.isBuffer(src) ? src : Buffer.from(src);
 
   const header = Buffer.alloc(4);
@@ -48,7 +50,7 @@ export function prefixLength(src: string | ArrayBufferLike): Buffer {
 }
 
 export class RPC {
-  pending: EventEmitter = new EventEmitter();
+  pending: events.EventEmitter = new events.EventEmitter();
   initial: number;
   counter: number;
 
@@ -65,6 +67,7 @@ export class RPC {
   }
 
   message(seq: number, src: string | ArrayBufferLike): Buffer {
+  // @ts-ignore
     const buf = Buffer.isBuffer(src) ? src : Buffer.from(src);
     const header = Buffer.alloc(4);
     header.writeUInt32BE(seq);
@@ -103,7 +106,7 @@ export class RPC {
 
 export const STREAM_CHUNK_SIZE = 2048;
 
-export class Stream extends EventEmitter {
+export class Stream extends events.EventEmitter {
   id: number;
   body: Readable;
   headers?: { [key: string]: string };
@@ -166,6 +169,8 @@ export class Streams {
 
   pull(stream: Stream, handled: boolean, headers: { [key: string]: string }) {
     stream.headers = headers;
+    // TODO: fix events.EventEmitter type
+    // @ts-ignore
     stream.emit("ready", handled);
   }
 
@@ -179,7 +184,7 @@ export class Streams {
   }
 
   async *encoded(id: number, body: AsyncIterable<Buffer>) {
-    let buf: Buffer = Buffer.of();
+    let buf: Buffer = Buffer.from([]);
     for await (const chunk of body) {
       buf = Buffer.concat([buf, Buffer.from(chunk)]);
       while (buf.byteLength >= STREAM_CHUNK_SIZE) {
@@ -190,10 +195,10 @@ export class Streams {
     if (buf.byteLength > 0) {
       yield new DataPacket(id, buf).encode();
     }
-    yield new DataPacket(id, Buffer.of()).encode();
+    yield new DataPacket(id, Buffer.from([])).encode();
   }
 
-  async wait(stream: EventEmitter): Promise<Boolean> {
+  async wait(stream: events.EventEmitter): Promise<Boolean> {
     return (<[Boolean]>await events.once(stream, "ready"))[0];
   }
 }

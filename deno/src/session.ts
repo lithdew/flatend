@@ -1,20 +1,21 @@
 import { Buffer } from "https://deno.land/std/node/buffer.ts";
 import * as net from "./std-node-net.ts";
-import nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
-import events from "https://deno.land/std/node/events.ts";
+import * as nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
+import * as events from "https://deno.land/std/node/events.ts";
 import crypto from "./std-node-crypto.ts";
 
 import { blake2b } from "https://deno.land/x/blake2b/mod.ts";
 
 export function x25519(privateKey: Uint8Array, publicKey: Uint8Array): Buffer {
+  // @ts-ignore
   return blake2b(nacl.scalarMult(privateKey, publicKey), "", "", 32);
 }
 
 export async function serverHandshake(conn: net.Socket): Promise<Uint8Array> {
-  const serverKeys = nacl.box.keyPair();
+  const serverKeys = nacl.box_keyPair();
 
   await events.once(conn, "readable");
-  const clientPublicKey = conn.read(nacl.box.publicKeyLength);
+  const clientPublicKey = conn.read(nacl.BoxLength.PublicKey);
 
   conn.write(serverKeys.publicKey);
 
@@ -22,12 +23,12 @@ export async function serverHandshake(conn: net.Socket): Promise<Uint8Array> {
 }
 
 export async function clientHandshake(client: net.Socket): Promise<Uint8Array> {
-  const clientKeys = nacl.box.keyPair();
+  const clientKeys = nacl.box_keyPair();
 
   client.write(clientKeys.publicKey);
 
   await events.once(client, "readable");
-  const serverPublicKey = client.read(nacl.box.publicKeyLength);
+  const serverPublicKey = client.read(nacl.BoxLength.PublicKey);
 
   return x25519(clientKeys.secretKey, serverPublicKey);
 }
@@ -48,6 +49,7 @@ export class Session {
   }
 
   public encrypt(src: string | ArrayBufferLike): Buffer {
+    // @ts-ignore
     const buf = Buffer.isBuffer(src) ? src : Buffer.from(src);
 
     const nonce = Buffer.alloc(12);

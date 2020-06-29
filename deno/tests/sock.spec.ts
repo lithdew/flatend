@@ -5,7 +5,7 @@ import { Node } from "../src";
 import chai, { expect } from "chai";
 import { Readable } from "stream";
 import { clientHandshake, serverHandshake, Session } from "../src/session";
-import nacl from "tweetnacl";
+import * as nacl from "tweetnacl";
 import { ID } from "../src/kademlia";
 import { lengthPrefixed, prefixLength, RPC } from "../src/stream";
 import { Context } from "../src/context";

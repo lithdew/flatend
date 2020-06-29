@@ -1,6 +1,6 @@
 import { Buffer } from "https://deno.land/std/node/buffer.ts";
 import { ID } from "./kademlia.ts";
-import net from "./std-node-net.ts";
+import * as net from "./std-node-net.ts";
 import { Session } from "./session.ts";
 import {
   drain,

@@ -1,10 +1,11 @@
 import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import { debug } from "https://deno.land/std/log/mod.ts";
 import { Context, Handler } from "./context.ts";
-// import net from "net";
+import * as net from "./std-node-net.ts";
 import { ID, Table } from "./kademlia.ts";
 import * as nacl from 'https://deno.land/x/tweetnacl_deno/src/nacl.ts'
 import { getAvailableAddress, splitHostPort } from "./net.ts";
-import ipaddr from "https://jspm.dev/ipaddr.js";
+// import ipaddr from "https://jspm.dev/ipaddr.js";
 import {
   DataPacket,
   FindNodeRequest,
@@ -14,12 +15,10 @@ import {
   ServiceRequestPacket,
   ServiceResponsePacket,
 } from "./packet.ts";
-import events from "https://deno.land/std/node/events.ts";
+import * as events from "https://deno.land/std/node/events.ts";
 import { clientHandshake, serverHandshake, Session } from "./session.ts";
 import { Provider } from "./provider.ts";
 import hash from "https://jspm.dev/object-hash";
-
-const debug = require("debug")("flatend");
 
 export interface NodeOptions {
   // A reachable, public address which peers may reach you on.
@@ -75,7 +74,9 @@ export class Node {
         }
       }
 
-      let publicHost: ipaddr.IPv4 | ipaddr.IPv6;
+      // TODO: import from ipaddr
+      // let publicHost: ipaddr.IPv4 | ipaddr.IPv6;
+      let publicHost: any;
       let publicPort: number;
 
       if (opts.publicAddr) {

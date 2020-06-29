@@ -1,7 +1,35 @@
 import { Buffer } from "https://deno.land/std/node/buffer.ts";
 import * as nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
-import ipaddr, { IPv4, IPv6 } from "https://jspm.dev/ipaddr.js";
-import assert from "https://deno.land/std/testing/asserts.ts";
+import ipaddr from "https://jspm.dev/ipaddr.js";
+import { assert } from "https://deno.land/std/testing/asserts.ts";
+
+function BufferCompare(a: Buffer | Uint8Array, b: Buffer|Uint8Array) {
+  //if (typeof a.compare === 'function') return a.compare(b)
+  if (a === b) return 0
+
+  var x = a.length
+  var y = b.length
+
+  var i = 0
+  var len = Math.min(x, y)
+  while (i < len) {
+    if (a[i] !== b[i]) break
+
+    ++i
+  }
+
+  if (i !== len) {
+    x = a[i]
+    y = b[i]
+  }
+
+  if (x < y) return -1
+  if (y < x) return 1
+  return 0
+}
+
+type IPv4 = ipaddr.IPv4;
+type IPv6 = ipaddr.IPv6;
 
 export enum UpdateResult {
   New,
@@ -26,7 +54,7 @@ const xor = (a: Uint8Array, b: Uint8Array): Uint8Array => {
 };
 
 export class ID {
-  publicKey: Uint8Array = Buffer.alloc(nacl.sign.publicKeyLength);
+  publicKey: Uint8Array = Buffer.alloc(nacl.SignLength.PublicKey);
   host: IPv4 | IPv6;
   port: number = 0;
 
@@ -90,17 +118,17 @@ export class Table {
   }
 
   private bucketIndex(pub: Uint8Array): number {
-    if (Buffer.compare(pub, this.pub) === 0) return 0;
+    if (BufferCompare(pub, this.pub) === 0) return 0;
     return leadingZeros(xor(pub, this.pub));
   }
 
   public update(id: ID): UpdateResult {
-    if (Buffer.compare(id.publicKey, this.pub) === 0) return UpdateResult.Fail;
+    if (BufferCompare(id.publicKey, this.pub) === 0) return UpdateResult.Fail;
 
     const bucket = this.buckets[this.bucketIndex(id.publicKey)];
 
     const i = bucket.findIndex(
-      (item) => Buffer.compare(item.publicKey, id.publicKey) === 0
+      (item) => BufferCompare(item.publicKey, id.publicKey) === 0
     );
     if (i >= 0) {
       bucket.unshift(...bucket.splice(i, 1));
@@ -117,7 +145,7 @@ export class Table {
 
   public delete(pub: Uint8Array): boolean {
     const bucket = this.buckets[this.bucketIndex(pub)];
-    const i = bucket.findIndex((id) => Buffer.compare(id.publicKey, pub) === 0);
+    const i = bucket.findIndex((id) => BufferCompare(id.publicKey, pub) === 0);
     if (i >= 0) {
       bucket.splice(i, 1);
       this.length--;
@@ -128,7 +156,7 @@ export class Table {
 
   public has(pub: Uint8Array): boolean {
     const bucket = this.buckets[this.bucketIndex(pub)];
-    return !!bucket.find((id) => Buffer.compare(id.publicKey, pub) === 0);
+    return !!bucket.find((id) => BufferCompare(id.publicKey, pub) === 0);
   }
 
   public closestTo(pub: Uint8Array, k = this.cap): ID[] {
@@ -137,7 +165,7 @@ export class Table {
     const fill = (i: number) => {
       const bucket = this.buckets[i];
       for (let i = 0; closest.length < k && i < bucket.length; i++) {
-        if (Buffer.compare(bucket[i].publicKey, pub) != 0)
+        if (BufferCompare(bucket[i].publicKey, pub) != 0)
           closest.push(bucket[i]);
       }
     };
@@ -156,7 +184,7 @@ export class Table {
     }
 
     closest.sort((a: ID, b: ID) =>
-      Buffer.compare(xor(a.publicKey, pub), xor(b.publicKey, pub))
+      BufferCompare(xor(a.publicKey, pub), xor(b.publicKey, pub))
     );
 
     return closest.length > k ? closest.slice(0, k) : closest;

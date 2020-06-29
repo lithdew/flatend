@@ -1,6 +1,6 @@
 import { IPv4, IPv6 } from "https://jspm.dev/ipaddr.js";
-import net from "./std-node-net.ts";
-import events from "https://deno.land/std/node/events.ts";
+import * as net from "./std-node-net.ts";
+import * as events from "https://deno.land/std/node/events.ts";
 import ipaddr from "https://jspm.dev/ipaddr.js";
 
 /**

@@ -1,6 +1,6 @@
 import { Buffer } from "https://deno.land/std/node/buffer.ts";
-import nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
-import assert from "https://deno.land/std/testing/asserts.ts";
+import * as nacl from "https://deno.land/x/tweetnacl_deno/src/nacl.ts";
+import {assert} from "https://deno.land/std/testing/asserts.ts";
 import { ID } from "./kademlia.ts";
 
 export enum Opcode {
@@ -79,8 +79,8 @@ export class HandshakePacket {
 
     let signature: Buffer | undefined;
     if (id) {
-      signature = buf.slice(0, nacl.sign.signatureLength);
-      buf = buf.slice(nacl.sign.signatureLength);
+      signature = buf.slice(0, nacl.SignLength.Signature);
+      buf = buf.slice(nacl.SignLength.Signature);
     }
 
     return [new HandshakePacket(id, services, signature), buf];

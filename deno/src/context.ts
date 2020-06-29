@@ -1,11 +1,13 @@
 import { Buffer } from "https://deno.land/std/node/buffer.ts";
-import { Duplex, finished } from "https://jspm.dev/stream";
+import { Duplex, finished } from "./std-node-stream.ts";
 import { Stream, STREAM_CHUNK_SIZE } from "./stream.ts";
 import { ID } from "./kademlia.ts";
 import * as util from 'https://deno.land/std/node/util.ts'
 import { DataPacket, Opcode, ServiceResponsePacket } from "./packet.ts";
 import { Provider } from "./provider.ts";
 import { chunkBuffer } from "./node.ts";
+
+export type BufferEncoding = string
 
 export type Handler = (ctx: Context) => void;
 
@@ -48,7 +50,7 @@ export class Context extends Duplex {
 
       await this._writeHeader();
 
-      const payload = new DataPacket(this._stream.id, Buffer.of()).encode();
+      const payload = new DataPacket(this._stream.id, Buffer.from([])).encode();
       await this._provider.write(
         this._provider.rpc.message(
           0,
@@ -80,7 +82,7 @@ export class Context extends Duplex {
   async body(opts?: { limit?: number }): Promise<Buffer> {
     const limit = opts?.limit ?? 2 ** 16;
 
-    let buf = Buffer.of();
+    let buf = Buffer.from([]);
     for await (const chunk of this) {
       buf = Buffer.concat([buf, chunk]);
       if (buf.byteLength > limit) {

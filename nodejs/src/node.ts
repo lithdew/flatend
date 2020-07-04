@@ -42,7 +42,8 @@ export interface NodeOptions {
   services?: { [key: string]: Handler };
 
   // Total number of attempts to reconnect to a peer we reached that disconnected.
-  // Default is 8 attempts, set to 0 to not attempt to reconnect at all.
+  // Default is 8 attempts: set to 0 to not attempt to reconnect, or a negative number
+  // to always attempt to reconnect.
   numReconnectAttempts?: number;
 
   // The amount of time to wait before each reconnection attempt. Default is 500
@@ -407,7 +408,7 @@ export class Node {
           }
         });
 
-        if (this._numReconnectAttempts > 0) {
+        if (this._numReconnectAttempts !== 0) {
           setImmediate(async () => {
             await events.once(provider!.sock, "end");
 
@@ -418,7 +419,7 @@ export class Node {
             const reconnect = async () => {
               if (this._shutdown) return;
 
-              if (count-- === 0) {
+              if (this._numReconnectAttempts > 0 && count-- === 0) {
                 debug(
                   `Tried ${this._numReconnectAttempts} times reconnecting to ${
                     provider!.addr

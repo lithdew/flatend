@@ -3,6 +3,8 @@ import { EventEmitter } from 'https://deno.land/std/node/events.ts'
 import { Duplex } from './std-node-stream.ts'
 
 export class Socket extends Duplex {
+  #connection?: Deno.Conn
+  
   constructor(options?: SocketConstructorOpts) {
     super()
     console.log('todo: net.Socket', options)
@@ -42,6 +44,7 @@ export class Socket extends Duplex {
         hostname: options?.host,
         port: Number(options?.port),
       }).then(async conn => {
+        this.#connection = conn
         this.connecting = false
         this.emit('connect')
         this.emit('ready')
@@ -86,7 +89,8 @@ conn.read(Buffer.of())
   // write(buffer: Uint8Array | string, cb?: (err?: Error) => void): boolean;
   // write(str: Uint8Array | string, encoding?: BufferEncoding, cb?: (err?: Error) => void): boolean;
   write(str: Uint8Array): boolean {
-    console.log('todo: net.Socket.write', str.length)
+    console.log('  ok: net.Socket.write', str.length)
+    this.#connection?.write(str)
     return super.write(str)
   }
   end(): boolean {

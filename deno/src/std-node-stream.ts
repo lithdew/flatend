@@ -8,6 +8,18 @@ export class Stream extends events.EventEmitter {
   pipe<T>(destination: T, options?: { end?: boolean }): T {
     return destination
   }
+  on(event:any, listener: any){
+    console.log('todo: stream.Stream.on', event)
+    return super.on(event, listener)
+  }
+  emit(event:any, data?: any){
+    console.log('todo: stream.Stream.emit', event, data)
+    return super.emit(event, data)
+  }
+  once(event:any, listener: any){
+    // console.log('todo: stream.Stream.once', event)
+    return super.once(event, listener)
+  }
 }
 
 
@@ -21,6 +33,7 @@ interface ReadableOptions {
 }
 
 export class Readable extends Stream {
+  #emittedReadable = false
   /**
    * A utility method for creating Readable Streams out of iterators.
    */
@@ -57,6 +70,25 @@ export class Readable extends Stream {
   }
   _destroy(error: Error | null, callback: (error?: Error | null) => void): void{ console.log('TODO _destroy') }
   destroy(error?: Error): void{ console.log('TODO destroy') }
+
+
+  on(event:any, listener: any){
+    const ok = super.on(event, listener)
+    if (event  ==='readable'&&!this.#emittedReadable) {
+      this.#emittedReadable = true
+      super.emit('readable', this)
+    }
+    console.log('todo: stream.Readable.on', event)
+    return ok
+  }
+  emit(event:any, data?: any){
+    console.log('todo: stream.Readable.emit', event, data)
+    return super.emit(event, data)
+  }
+  once(event:any, listener: any){
+    // console.log('todo: stream.Readable.once', event)
+    return super.once(event, listener)
+  }
 
   /**
    * Event emitter

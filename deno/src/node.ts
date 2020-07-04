@@ -312,8 +312,11 @@ export class Node {
       });
 
       try {
+console.log('connect beforehad')
         const secret = await clientHandshake(conn);
+console.log('connect aftershake')
         const session = new Session(secret);
+console.log('connect aftersess')
 
         provider = new Provider(conn, session, true);
         this.clients.set(hash(opts), provider);

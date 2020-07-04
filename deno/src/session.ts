@@ -26,10 +26,11 @@ export async function clientHandshake(client: net.Socket): Promise<Uint8Array> {
   const clientKeys = nacl.box_keyPair();
 
   client.write(clientKeys.publicKey);
-
+console.log('hanread')
   await events.once(client, "readable");
   const serverPublicKey = client.read(nacl.BoxLength.PublicKey);
 
+console.log('handpuh')
   return x25519(clientKeys.secretKey, serverPublicKey);
 }
 

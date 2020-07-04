@@ -1,20 +1,93 @@
-import { EventEmitter } from "https://deno.land/std/node/events.ts"
-import { Duplex } from "./std-node-stream.ts"
+import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import { EventEmitter } from 'https://deno.land/std/node/events.ts'
+import { Duplex } from './std-node-stream.ts'
 
 export class Socket extends Duplex {
   constructor(options?: SocketConstructorOpts) {
-    console.log('todo: net.Socket')
     super()
+    console.log('todo: net.Socket', options)
+    // setTimeout(() => {}, 3000)
   }
+  // // Extended base methods
+  // write(buffer: Uint8Array | string, cb?: (err?: Error) => void): boolean;
+  // write(str: Uint8Array | string, encoding?: BufferEncoding, cb?: (err?: Error) => void): boolean;
+
+  // connect(port: number, host: string, connectionListener?: () => void): this;
+  // connect(port: number, connectionListener?: () => void): this;
+  // connect(path: string, connectionListener?: () => void): this;
+
+  connect(options: SocketConnectOpts, connectionListener?: () => void): this {
+    if (!('host' in options)) {
+      throw new Error('host missing')
+    }
+
+    console.log('todo: net.Socket.connect', options)
+
+    if (this.write !== Socket.prototype.write)
+      this.write = Socket.prototype.write
+
+    // if (this.destroyed) {
+    //   this._handle = null;
+    //   this._peername = null;
+    //   this._sockname =s null;
+    // }
+    if (typeof connectionListener === 'function') {
+      this.once('connect', connectionListener)
+    }
+    this.connecting = true
+    this.writable = true
+
+    setTimeout(() =>
+      Deno.connect({
+        hostname: options?.host,
+        port: Number(options?.port),
+      }).then(async conn => {
+        this.connecting = false
+        this.emit('connect')
+        this.emit('ready')
+conn.read(Buffer.of())
+        console.log('todo: net.connect.connected', conn.read(Buffer.of()))
+            // await Promise.all([Deno.copy(conn, this), Deno.copy(this, conn)]);
+
+      })
+    )
+
+    return this
+  }
+
+
+  // setEncoding(encoding?: BufferEncoding): this;
+  // pause(): this;
+  // resume(): this;
+  // setTimeout(timeout: number, callback?: () => void): this;
+  // setNoDelay(noDelay?: boolean): this;
+  // setKeepAlive(enable?: boolean, initialDelay?: number): this;
+  // address(): AddressInfo | string;
+  // unref(): this;
+  // ref(): this;
+
+  // readonly bufferSize: number;
+  // readonly bytesRead: number;
+  // readonly bytesWritten: number;
+  /*readonly*/ connecting: boolean = false
+  // readonly destroyed: boolean;
+  // readonly localAddress: string;
+  // readonly localPort: number;
+  // readonly remoteAddress?: string;
+  // readonly remoteFamily?: string;
+  // readonly remotePort?: number;
+  /* override because readonly*/ writable: boolean = false
+
   read(len: number): Uint8Array {
-    console.log('todo: net.Socket.read')
-    return new Uint8Array(8)
+    console.log('todo: net.Socket.read', len)
+    return super.read(len)
+    // return new Uint8Array(8)
   }
   // write(buffer: Uint8Array | string, cb?: (err?: Error) => void): boolean;
   // write(str: Uint8Array | string, encoding?: BufferEncoding, cb?: (err?: Error) => void): boolean;
   write(str: Uint8Array): boolean {
-    console.log('todo: net.Socket.write')
-    return false
+    console.log('todo: net.Socket.write', str.length)
+    return super.write(str)
   }
   end(): boolean {
     console.log('todo: net.Socket.end')
@@ -33,7 +106,6 @@ export interface AddressInfo {
 }
 
 export class Server extends EventEmitter {
-
   #listener?: (socket: Socket) => void
 
   constructor(connectionListener?: (socket: Socket) => void) {
@@ -42,17 +114,16 @@ export class Server extends EventEmitter {
     this.#listener = connectionListener
   }
 
-  unref(){
+  unref() {
     console.log('todo: net.Server.unref')
   }
 
-  close(){
+  close() {
     console.log('todo: net.Server.close')
-    
   }
-  address(): AddressInfo{
+  address(): AddressInfo {
     console.log('todo: net.Server.address')
-    return {} as unknown as AddressInfo
+    return ({} as unknown) as AddressInfo
   }
 
   // listen(port?: number, hostname?: string, backlog?: number, listeningListener?: () => void): this;
@@ -121,92 +192,112 @@ export class Server extends EventEmitter {
 }
 
 
+// Types
 
-export type LookupFunction = (hostname: string, options: any/*dns.LookupOneOptions*/, callback: (err: any/*NodeJS.ErrnoException | null*/, address: string, family: number) => void) => void;
+export type LookupFunction = (
+  hostname: string,
+  options: any /*dns.LookupOneOptions*/,
+  callback: (
+    err: any /*NodeJS.ErrnoException | null*/,
+    address: string,
+    family: number
+  ) => void
+) => void
 
 export interface AddressInfo {
-    address: string;
-    family: string;
-    port: number;
+  address: string
+  family: string
+  port: number
 }
 
 export interface SocketConstructorOpts {
-    fd?: number;
-    allowHalfOpen?: boolean;
-    readable?: boolean;
-    writable?: boolean;
+  fd?: number
+  allowHalfOpen?: boolean
+  readable?: boolean
+  writable?: boolean
 }
 
 export interface OnReadOpts {
-    buffer: Uint8Array | (() => Uint8Array);
-    /**
-     * This function is called for every chunk of incoming data.
-     * Two arguments are passed to it: the number of bytes written to buffer and a reference to buffer.
-     * Return false from this function to implicitly pause() the socket.
-     */
-    callback(bytesWritten: number, buf: Uint8Array): boolean;
+  buffer: Uint8Array | (() => Uint8Array)
+  /**
+   * This function is called for every chunk of incoming data.
+   * Two arguments are passed to it: the number of bytes written to buffer and a reference to buffer.
+   * Return false from this function to implicitly pause() the socket.
+   */
+  callback(bytesWritten: number, buf: Uint8Array): boolean
 }
 
 export interface ConnectOpts {
-    /**
-     * If specified, incoming data is stored in a single buffer and passed to the supplied callback when data arrives on the socket.
-     * Note: this will cause the streaming functionality to not provide any data, however events like 'error', 'end', and 'close' will
-     * still be emitted as normal and methods like pause() and resume() will also behave as expected.
-     */
-    onread?: OnReadOpts;
+  /**
+   * If specified, incoming data is stored in a single buffer and passed to the supplied callback when data arrives on the socket.
+   * Note: this will cause the streaming functionality to not provide any data, however events like 'error', 'end', and 'close' will
+   * still be emitted as normal and methods like pause() and resume() will also behave as expected.
+   */
+  onread?: OnReadOpts
 }
 
 export interface TcpSocketConnectOpts extends ConnectOpts {
-    port: number;
-    host?: string;
-    localAddress?: string;
-    localPort?: number;
-    hints?: number;
-    family?: number;
-    lookup?: LookupFunction;
+  port: number
+  host?: string
+  localAddress?: string
+  localPort?: number
+  hints?: number
+  family?: number
+  lookup?: LookupFunction
 }
 
 export interface IpcSocketConnectOpts extends ConnectOpts {
-    path: string;
+  path: string
 }
 
-export type SocketConnectOpts = TcpSocketConnectOpts | IpcSocketConnectOpts;
+export type SocketConnectOpts = TcpSocketConnectOpts | IpcSocketConnectOpts
 
 export interface ListenOptions {
-    port?: number;
-    host?: string;
-    backlog?: number;
-    path?: string;
-    exclusive?: boolean;
-    readableAll?: boolean;
-    writableAll?: boolean;
-    /**
-     * @default false
-     */
-    ipv6Only?: boolean;
+  port?: number
+  host?: string
+  backlog?: number
+  path?: string
+  exclusive?: boolean
+  readableAll?: boolean
+  writableAll?: boolean
+  /**
+   * @default false
+   */
+  ipv6Only?: boolean
 }
 
-
-export interface TcpNetConnectOpts extends TcpSocketConnectOpts, SocketConstructorOpts {
-    timeout?: number;
+export interface TcpNetConnectOpts
+  extends TcpSocketConnectOpts,
+    SocketConstructorOpts {
+  timeout?: number
 }
 
-export interface IpcNetConnectOpts extends IpcSocketConnectOpts, SocketConstructorOpts {
-    timeout?: number;
+export interface IpcNetConnectOpts
+  extends IpcSocketConnectOpts,
+    SocketConstructorOpts {
+  timeout?: number
 }
 
-export type NetConnectOpts = TcpNetConnectOpts | IpcNetConnectOpts;
+export type NetConnectOpts = TcpNetConnectOpts | IpcNetConnectOpts
 
 export function createServer(
   connectionListener?: (socket: Socket) => void
 ): Server {
-
-    console.log('todo: net.createServer')
+  console.log('todo: net.createServer')
   return new Server(console.log)
 }
 // export function createServer(options?: { allowHalfOpen?: boolean, pauseOnConnect?: boolean }, connectionListener?: (socket: Socket) => void): Server;
-export function connect(options: NetConnectOpts, connectionListener?: () => void): Socket {
-  return new Socket()
+export function connect(
+  options: NetConnectOpts,
+  connectionListener?: () => void
+): Socket {
+  const socket = new Socket(options)
+
+  if (options.timeout) {
+    // socket.setTimeout(options.timeout);
+  }
+
+  return socket.connect(options)
 }
 // export function connect(port: number, host?: string, connectionListener?: () => void): Socket;
 // export function connect(path: string, connectionListener?: () => void): Socket;
@@ -214,5 +305,9 @@ export function connect(options: NetConnectOpts, connectionListener?: () => void
 // export function createConnection(port: number, host?: string, connectionListener?: () => void): Socket;
 // export function createConnection(path: string, connectionListener?: () => void): Socket;
 // export function isIP(input: string): number;
-export function isIPv4(input: string): boolean{ return true }
-export function isIPv6(input: string): boolean{ return false }
+export function isIPv4(input: string): boolean {
+  return true
+}
+export function isIPv6(input: string): boolean {
+  return false
+}

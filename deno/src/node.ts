@@ -303,7 +303,6 @@ export class Node {
     if (!provider) {
       const conn = net.connect(opts);
       await events.once(conn, "connect");
-
       this.conns.add(conn);
 
       setTimeout(async () => {

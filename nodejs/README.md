@@ -274,25 +274,37 @@ package flatend
 import "github.com/lithdew/kademlia"
 
 type Node struct {
-    // A reachable, public address which peers may reach you on.
-    // The format of the address must be [host]:[port].
-    PublicAddr string
+	// A reachable, public address which peers may reach you on.
+	// The format of the address must be [host]:[port].
+	PublicAddr string
 
-    // A 32-byte Ed25519 private key. A secret key must be provided
-    // to allow for peers to reach you. A secret key may be generated
-    // by calling `flatend.GenerateSecretKey()`.
-    SecretKey kademlia.PrivateKey
+	// A 32-byte Ed25519 private key. A secret key must be provided
+	// to allow for peers to reach you. A secret key may be generated
+	// by calling `flatend.GenerateSecretKey()`.
+	SecretKey kademlia.PrivateKey
 
-    // A list of addresses and ports assembled using:
-    // 1. flatend.BindAny() (bind to all hosts and any available port)
-    // 2. flatend.BindTCP(string) (binds to a [host]:[port])
-    // 3. flatend.BindTCPv4(string) (binds to an [IPv4 host]:[port])
-    // 4. flatend.BindTCPv6(string) (binds to an [IPv6 host]:[port])
-    // which your Flatend node will listen for other nodes from.
-    BindAddrs []BindFunc
+	// A list of IPv4/IPv6 addresses and ports assembled as [host]:[port] which
+	// your Flatend node will listen for other nodes from.
+	BindAddrs []string
 
-    // A mapping of service names to their respective handlers.
-    Services map[string]Handler
+	// A mapping of service names to their respective handlers.
+	Services map[string]flatend.Handler
+
+	// Total number of attempts to reconnect to a peer we reached that disconnected.
+	// Default is 8 attempts, set to a negative integer to not attempt to reconnect at all.
+	NumReconnectAttempts int
+
+	// A factor proportionally representing how much larger each reconnection attempts
+	// delay should increase by upon each attempt. Default is 1.25.
+	ReconnectBackoffFactor float64
+
+	// The minimum amount of time to wait before each reconnection attempt. Default is 500
+	// milliseconds.
+	ReconnectBackoffMinDuration time.Duration
+
+	// The maximum amount of time to wait before each reconnection attempt. Default is 1
+	// second.
+	ReconnectBackoffMaxDuration time.Duration
 
     // ....
 }
@@ -368,6 +380,14 @@ export interface NodeOptions {
 
   // A mapping of service names to their respective handlers.
   services?: { [key: string]: Handler };
+
+  // Total number of attempts to reconnect to a peer we reached that disconnected.
+  // Default is 8 attempts, set to 0 to not attempt to reconnect at all.
+  numReconnectAttempts?: number;
+
+  // The amount of time to wait before each reconnection attempt. Default is 500
+  // milliseconds.
+  reconnectBackoffDuration?: number;
 }
 
 await Node.start((opts: NodeOpts));

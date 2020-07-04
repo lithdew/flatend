@@ -382,7 +382,8 @@ export interface NodeOptions {
   services?: { [key: string]: Handler };
 
   // Total number of attempts to reconnect to a peer we reached that disconnected.
-  // Default is 8 attempts, set to 0 to not attempt to reconnect at all.
+  // Default is 8 attempts: set to 0 to not attempt to reconnect, or a negative number
+  // to always attempt to reconnect.
   numReconnectAttempts?: number;
 
   // The amount of time to wait before each reconnection attempt. Default is 500

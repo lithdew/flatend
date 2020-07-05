@@ -33,7 +33,9 @@ interface ReadableOptions {
 }
 
 export class Readable extends Stream {
+  #needReadable = false;
   #emittedReadable = false
+
   /**
    * A utility method for creating Readable Streams out of iterators.
    */
@@ -73,12 +75,12 @@ export class Readable extends Stream {
 
 
   on(event:any, listener: any){
+    console.log('todo: stream.Readable.on', event)
     const ok = super.on(event, listener)
     if (event  ==='readable'&&!this.#emittedReadable) {
       this.#emittedReadable = true
       super.emit('readable', this)
     }
-    console.log('todo: stream.Readable.on', event)
     return ok
   }
   emit(event:any, data?: any){
@@ -246,8 +248,8 @@ export class Writable extends Stream /* implements NodeJS.WritableStream */ {
     _destroy(error: Error | null, callback: (error?: Error | null) => void): void{ console.log('TODO _destroy') }
     _final(callback: (error?: Error | null) => void): void{ console.log('TODO _final') }
     write(chunk: any, cb?: (error: Error | null | undefined) => void): boolean{
-    console.log('todo: stream.Writable.write')
-      return true
+    console.log('  ok: stream.Writable.write')
+      return super.push(chunk, cb)
     }
     // write(chunk: any, encoding: BufferEncoding, cb?: (error: Error | null | undefined) => void): boolean
     // setDefaultEncoding(encoding: BufferEncoding): this;

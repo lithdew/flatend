@@ -1,10 +1,10 @@
-import { Buffer } from "https://deno.land/std/node/buffer.ts";
+import { Buffer } from 'https://deno.land/std/node/buffer.ts'
 import { EventEmitter } from 'https://deno.land/std/node/events.ts'
 import { Duplex } from './std-node-stream.ts'
 
 export class Socket extends Duplex {
   #connection?: Deno.Conn
-  
+
   constructor(options?: SocketConstructorOpts) {
     super()
     console.log('todo: net.Socket', options)
@@ -48,16 +48,22 @@ export class Socket extends Duplex {
         this.connecting = false
         this.emit('connect')
         this.emit('ready')
-conn.read(Buffer.of())
-        console.log('todo: net.connect.connected', conn.read(Buffer.of()))
-            // await Promise.all([Deno.copy(conn, this), Deno.copy(this, conn)]);
 
+        const i = setInterval(() => {
+          const ok = new Uint8Array(32)
+          conn.read(ok).then(len => {
+            console.log('read', ok)
+          })
+          // console.log('reading', ok)
+        }, 1000)
+
+        console.log('todo: net.connect.connected', conn.read(new Uint8Array(0)))
+        // await Promise.all([Deno.copy(conn, this), Deno.copy(this, conn)]);
       })
     )
 
     return this
   }
-
 
   // setEncoding(encoding?: BufferEncoding): this;
   // pause(): this;
@@ -83,13 +89,16 @@ conn.read(Buffer.of())
 
   read(len: number): Uint8Array {
     console.log('todo: net.Socket.read', len)
-    return super.read(len)
+    const buf = new Uint8Array(len)
+    this.#connection?.read(buf) || buf
+    return buf
+    // return super.read(len)
     // return new Uint8Array(8)
   }
   // write(buffer: Uint8Array | string, cb?: (err?: Error) => void): boolean;
   // write(str: Uint8Array | string, encoding?: BufferEncoding, cb?: (err?: Error) => void): boolean;
   write(str: Uint8Array): boolean {
-    console.log('  ok: net.Socket.write', str.length)
+    console.log('  ok: net.Socket.write', str)
     this.#connection?.write(str)
     return super.write(str)
   }
@@ -194,7 +203,6 @@ export class Server extends EventEmitter {
   // prependOnceListener(event: "error", listener: (err: Error) => void): this;
   // prependOnceListener(event: "listening", listener: () => void): this;
 }
-
 
 // Types
 

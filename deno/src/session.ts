@@ -7,8 +7,7 @@ import crypto from "./std-node-crypto.ts";
 import { blake2b } from "https://deno.land/x/blake2b/mod.ts";
 
 export function x25519(privateKey: Uint8Array, publicKey: Uint8Array): Buffer {
-  // @ts-ignore
-  return blake2b(nacl.scalarMult(privateKey, publicKey), "", "", 32);
+  return Buffer.from(blake2b(nacl.scalarMult(privateKey, publicKey), undefined, undefined, 32).toString());
 }
 
 export async function serverHandshake(conn: net.Socket): Promise<Uint8Array> {
@@ -30,7 +29,7 @@ console.log('hanread')
   await events.once(client, "readable");
   const serverPublicKey = client.read(nacl.BoxLength.PublicKey);
 
-console.log('handpuh')
+console.log('handpuh', serverPublicKey)
   return x25519(clientKeys.secretKey, serverPublicKey);
 }
 

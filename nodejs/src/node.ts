@@ -40,6 +40,15 @@ export interface NodeOptions {
 
   // A mapping of service names to their respective handlers.
   services?: { [key: string]: Handler };
+
+  // Total number of attempts to reconnect to a peer we reached that disconnected.
+  // Default is 8 attempts: set to 0 to not attempt to reconnect, or a negative number
+  // to always attempt to reconnect.
+  numReconnectAttempts?: number;
+
+  // The amount of time to wait before each reconnection attempt. Default is 500
+  // milliseconds.
+  reconnectBackoffDuration?: number;
 }
 
 export class Node {
@@ -52,12 +61,19 @@ export class Node {
   id?: ID;
   keys?: nacl.SignKeyPair;
   handlers: { [key: string]: Handler } = {};
+
   _shutdown = false;
+  _numReconnectAttempts: number = 8;
+  _reconnectBackoffDuration: number = 500;
 
   public static async start(opts: NodeOptions): Promise<Node> {
     const node = new Node();
 
     if (opts.services) node.handlers = opts.services;
+    if (opts.numReconnectAttempts)
+      node._numReconnectAttempts = opts.numReconnectAttempts;
+    if (opts.reconnectBackoffDuration)
+      node._reconnectBackoffDuration = opts.reconnectBackoffDuration;
 
     if (opts.secretKey) {
       node.keys = nacl.sign.keyPair.fromSecretKey(opts.secretKey);
@@ -392,36 +408,42 @@ export class Node {
           }
         });
 
-        setImmediate(async () => {
-          await events.once(provider!.sock, "end");
+        if (this._numReconnectAttempts !== 0) {
+          setImmediate(async () => {
+            await events.once(provider!.sock, "end");
 
-          if (this._shutdown) return;
-
-          let count = 8;
-
-          const reconnect = async () => {
             if (this._shutdown) return;
 
-            if (count-- === 0) {
+            let count = this._numReconnectAttempts;
+
+            const reconnect = async () => {
+              if (this._shutdown) return;
+
+              if (this._numReconnectAttempts > 0 && count-- === 0) {
+                debug(
+                  `Tried ${this._numReconnectAttempts} times reconnecting to ${
+                    provider!.addr
+                  }. Giving up.`
+                );
+                return;
+              }
+
               debug(
-                `Tried 8 times reconnecting to ${provider!.addr}. Giving up.`
+                `Trying to reconnect to '${provider!.addr}'. Sleeping for ${
+                  this._reconnectBackoffDuration
+                }ms.`
               );
-              return;
-            }
 
-            debug(
-              `Trying to reconnect to '${provider!.addr}'. Sleeping for 500ms.`
-            );
+              try {
+                await this.connect(opts);
+              } catch (err) {
+                setTimeout(reconnect, this._reconnectBackoffDuration);
+              }
+            };
 
-            try {
-              await this.connect(opts);
-            } catch (err) {
-              setTimeout(reconnect, 500);
-            }
-          };
-
-          setTimeout(reconnect, 500);
-        });
+            setTimeout(reconnect, this._reconnectBackoffDuration);
+          });
+        }
       } catch (err) {
         conn.end();
         throw err;

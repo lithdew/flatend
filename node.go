@@ -18,6 +18,11 @@ import (
 var _ monte.Handler = (*Node)(nil)
 var _ monte.ConnStateHandler = (*Node)(nil)
 
+const DefaultNumReconnectAttempts = 8
+const DefaultReconnectBackoffFactor = 1.25
+const DefaultReconnectBackoffMinDuration = 500 * time.Millisecond
+const DefaultReconnectBackoffMaxDuration = 1 * time.Second
+
 type Node struct {
 	// A reachable, public address which peers may reach you on.
 	// The format of the address must be [host]:[port].
@@ -34,6 +39,22 @@ type Node struct {
 
 	// A mapping of service names to their respective handlers.
 	Services map[string]Handler
+
+	// Total number of attempts to reconnect to a peer we reached that disconnected.
+	// Default is 8 attempts, set to a negative integer to not attempt to reconnect at all.
+	NumReconnectAttempts int
+
+	// A factor proportionally representing how much larger each reconnection attempts
+	// delay should increase by upon each attempt. Default is 1.25.
+	ReconnectBackoffFactor float64
+
+	// The minimum amount of time to wait before each reconnection attempt. Default is 500
+	// milliseconds.
+	ReconnectBackoffMinDuration time.Duration
+
+	// The maximum amount of time to wait before each reconnection attempt. Default is 1
+	// second.
+	ReconnectBackoffMaxDuration time.Duration
 
 	start sync.Once
 	stop  sync.Once
@@ -61,6 +82,46 @@ func GenerateSecretKey() kademlia.PrivateKey {
 	return secret
 }
 
+func (n *Node) getNumReconnectAttempts() int {
+	if n.NumReconnectAttempts == 0 {
+		return DefaultNumReconnectAttempts
+	}
+	return n.NumReconnectAttempts
+}
+
+func (n *Node) getReconnectBackoffFactor() float64 {
+	if n.ReconnectBackoffFactor <= 0 {
+		return DefaultReconnectBackoffFactor
+	}
+	return n.ReconnectBackoffFactor
+}
+
+func (n *Node) getReconnectBackoffDurationRange() (time.Duration, time.Duration) {
+	reconnectBackoffMinDuration := n.ReconnectBackoffMinDuration
+	if reconnectBackoffMinDuration <= 0 {
+		reconnectBackoffMinDuration = DefaultReconnectBackoffMinDuration
+	}
+	reconnectBackoffMaxDuration := n.ReconnectBackoffMaxDuration
+	if reconnectBackoffMaxDuration <= 0 {
+		reconnectBackoffMaxDuration = DefaultReconnectBackoffMaxDuration
+	}
+	if reconnectBackoffMaxDuration < reconnectBackoffMinDuration {
+		reconnectBackoffMinDuration = DefaultReconnectBackoffMinDuration
+		reconnectBackoffMaxDuration = DefaultReconnectBackoffMaxDuration
+	}
+	return reconnectBackoffMinDuration, reconnectBackoffMaxDuration
+}
+
+func (n *Node) getReconnectBackoffPlan() *backoff.Backoff {
+	min, max := n.getReconnectBackoffDurationRange()
+	return &backoff.Backoff{
+		Factor: n.getReconnectBackoffFactor(),
+		Jitter: true,
+		Min:    min,
+		Max:    max,
+	}
+}
+
 func (n *Node) Start(addrs ...string) error {
 	var (
 		publicHost net.IP
@@ -77,7 +138,7 @@ func (n *Node) Start(addrs ...string) error {
 			publicHost = addr.IP
 
 			if addr.Port <= 0 || addr.Port >= math.MaxUint16 {
-				return fmt.Errorf("'%d' is an invalid port", addr.Port)
+				return fmt.Errorf("%d is an invalid port", addr.Port)
 			}
 
 			publicPort = uint16(addr.Port)
@@ -102,7 +163,7 @@ func (n *Node) Start(addrs ...string) error {
 	start := false
 	n.start.Do(func() { start = true })
 	if !start {
-		return errors.New("listener already started")
+		return errors.New("node already started")
 	}
 
 	if n.SecretKey != kademlia.ZeroPrivateKey {
@@ -117,8 +178,9 @@ func (n *Node) Start(addrs ...string) error {
 		n.table = kademlia.NewTable(kademlia.ZeroPublicKey)
 	}
 
-	n.providers = NewProviders()
 	n.clients = make(map[string]*monte.Client)
+
+	n.providers = NewProviders()
 
 	n.srv = &monte.Server{
 		Handler:   n,
@@ -314,28 +376,25 @@ func (n *Node) HandleConnState(conn *monte.Conn, state monte.ConnState) {
 		return
 	}
 
-	go func() {
-		b := &backoff.Backoff{
-			Factor: 1.25,
-			Jitter: true,
-			Min:    500 * time.Millisecond,
-			Max:    1 * time.Second,
-		}
+	if n.getNumReconnectAttempts() > 0 {
+		go func() {
+			plan := n.getReconnectBackoffPlan()
 
-		for i := 0; i < 8; i++ { // 8 attempts max
-			err := n.Probe(addr)
-			if err == nil {
-				return
+			for i := 0; i < n.getNumReconnectAttempts(); i++ { // 8 attempts max
+				err := n.Probe(addr)
+				if err == nil {
+					return
+				}
+
+				duration := plan.Duration()
+
+				log.Printf("Trying to reconnect to %s. Sleeping for %s.", addr, duration)
+				time.Sleep(duration)
 			}
 
-			duration := b.Duration()
-
-			log.Printf("Trying to reconnect to %s. Sleeping for %s.", addr, duration)
-			time.Sleep(duration)
-		}
-
-		log.Printf("Tried 8 times reconnecting to %s. Giving up.", addr)
-	}()
+			log.Printf("Tried 8 times reconnecting to %s. Giving up.", addr)
+		}()
+	}
 }
 
 func (n *Node) HandleMessage(ctx *monte.Context) error {
@@ -573,11 +632,6 @@ func (n *Node) probe(conn *monte.Conn) error {
 	}
 
 	if packet.ID != nil {
-		//addr = Addr(packet.ID.Host, packet.ID.Port)
-		//if !packet.ID.Host.Equal(resolved.IP) || packet.ID.Port != uint16(resolved.Port) {
-		//	return provider, fmt.Errorf("dialed '%s' which advertised '%s'", resolved, addr)
-		//}
-
 		// update the provider with id and services info
 		provider, _ = n.providers.register(conn, packet.ID, packet.Services, true)
 		if !exists {
